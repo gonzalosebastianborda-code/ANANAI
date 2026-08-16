@@ -1,0 +1,1454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AÑAÑAI · Ventas & Cobros</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
+:root{--bg:#0f1117;--surface:#181c27;--card:#1e2335;--border:#2a3050;--accent:#4f8ef7;--accent2:#f7c84f;--accent3:#4fd9a0;--danger:#f76f6f;--purple:#b48ef7;--orange:#f79f4f;--text:#e8ecf4;--muted:#8891a8;--label:#c2c9d9}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;min-height:100vh}
+.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 26px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:200}
+.logo{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;white-space:nowrap}.logo span{color:var(--accent)}
+.tabs{display:flex;gap:2px;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:3px}
+.tab{padding:5px 14px;border-radius:5px;font-size:11.5px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:transparent;white-space:nowrap;transition:all .15s}
+.tab.on{background:var(--accent);color:#fff}
+.tab:hover:not(.on){color:var(--label);background:#1e2335}
+.toggle-wrap{margin-left:auto;display:flex;align-items:center;gap:9px}
+.toggle-label{font-size:11px;color:var(--muted);line-height:1.4}.toggle-label b{color:var(--label)}
+.tog{position:relative;width:42px;height:22px;cursor:pointer;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tog-sl{position:absolute;inset:0;background:#2a3050;border-radius:22px;transition:.22s}
+.tog-sl::before{content:'';position:absolute;height:16px;width:16px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.22s}
+.tog input:checked+.tog-sl{background:var(--accent)}
+.tog input:checked+.tog-sl::before{transform:translateX(20px);background:#fff}
+.badge{padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700;background:rgba(247,159,79,.15);color:var(--orange)}
+.badge.on{background:rgba(79,142,247,.15);color:var(--accent)}
+main{max-width:1380px;margin:0 auto;padding:20px 26px}
+.sec{display:none}.sec.on{display:block}
+.kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px 17px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--accent))}
+.kpi.g{--kc:var(--accent3)}.kpi.y{--kc:var(--accent2)}.kpi.r{--kc:var(--danger)}.kpi.p{--kc:var(--purple)}.kpi.o{--kc:var(--orange)}
+.kl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:7px}
+.kv{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;line-height:1}
+.ks{font-size:11px;color:var(--muted);margin-top:4px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:14px}
+.g32{display:grid;grid-template-columns:2fr 1fr;gap:14px;margin-bottom:14px}
+.gf{margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:17px 19px}
+.ct{font-family:'Space Grotesk',sans-serif;font-size:12.5px;font-weight:600;color:var(--label);margin-bottom:2px}
+.cs{font-size:11px;color:var(--muted);margin-bottom:13px}
+/* FILTER BAR */
+.fbar{display:flex;align-items:center;gap:11px;flex-wrap:wrap;padding:10px 14px;background:var(--surface);border:1px solid var(--border);border-radius:9px;margin-bottom:14px}
+.fl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);white-space:nowrap}
+.fsel{background:#0f1117;border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:11.5px;color:var(--label);font-family:inherit;outline:none}
+.fsel:focus{border-color:var(--accent)}
+.date-input{background:#0f1117;border:1.5px solid var(--border);border-radius:6px;padding:5px 9px;font-size:11.5px;color:var(--label);font-family:inherit;outline:none;width:130px}
+.date-input:focus{border-color:var(--accent)}
+.date-sep{color:var(--muted);font-size:12px}
+.frst{padding:4px 11px;background:transparent;border:1px solid var(--border);border-radius:6px;font-size:11px;color:var(--muted);cursor:pointer}
+.frst:hover{border-color:var(--danger);color:var(--danger)}
+.btog{display:flex;gap:2px;background:#0f1117;border:1px solid var(--border);border-radius:6px;padding:2px}
+.bb{padding:4px 11px;border-radius:4px;font-size:11px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:transparent;transition:all .15s}
+.bb:hover{color:var(--label)}.bb.on{background:var(--accent);color:#fff}
+.fcnt{font-size:11px;color:var(--accent2);margin-left:auto}
+/* AGING */
+.ag-row{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+.ag-l{font-size:12px;color:var(--label);width:68px;flex-shrink:0}
+.ag-bw{flex:1;background:#151820;border-radius:4px;height:11px;overflow:hidden}
+.ag-b{height:100%;border-radius:4px}
+.ag-v{font-size:12px;font-weight:700;width:78px;text-align:right;flex-shrink:0}
+.ag-p{font-size:10px;color:var(--muted);width:32px;text-align:right;flex-shrink:0}
+/* TABLE */
+.tw{overflow-x:auto;max-height:480px;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{text-align:right;padding:6px 10px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border-bottom:1px solid var(--border);position:sticky;top:0;background:var(--card)}
+thead th:first-child{text-align:left}
+tbody td{padding:7px 10px;text-align:right;border-bottom:1px solid rgba(42,48,80,.4);color:var(--label)}
+tbody td:first-child{text-align:left;font-weight:600;color:var(--text)}
+tbody tr:hover td{background:rgba(79,142,247,.04)}
+tbody tr.clickable{cursor:pointer}
+tfoot td{padding:7px 10px;text-align:right;font-weight:700;color:var(--text);border-top:1px solid var(--border);background:rgba(42,48,80,.25)}
+tfoot td:first-child{text-align:left}
+.pill{display:inline-block;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.pi{background:rgba(247,159,79,.12);color:var(--orange)}
+.pe{background:rgba(79,142,247,.12);color:var(--accent)}
+.empty{text-align:center;padding:28px;color:var(--muted)}
+.stat-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:11px;margin-bottom:14px}
+/* EERR P&L table */
+.eerr-hdr td{background:#1F3864!important;color:#fff!important;font-weight:700;font-size:10.5px;padding:6px 12px;text-align:right}
+.eerr-hdr td:first-child{text-align:left;padding-left:12px}
+.eerr-section td{background:rgba(42,48,80,.18);font-weight:700;color:var(--label)!important;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;border-top:1px solid var(--border)}
+table .eerr-row td{padding:7px 12px;border-bottom:1px solid rgba(42,48,80,.3);color:var(--label);text-align:right;font-size:12px}
+table .eerr-row td:first-child{text-align:left;padding-left:20px;color:var(--muted)}
+table .eerr-total td{font-weight:700;color:var(--text)!important;border-top:2px solid var(--border);background:rgba(42,48,80,.3)}
+table .eerr-total td:first-child{text-align:left;padding-left:12px}
+.eerr-pos{color:var(--accent3)!important;font-weight:700}
+.eerr-neg{color:var(--danger)!important;font-weight:700}
+</style>
+</head>
+<body>
+<div class="nav">
+  <div class="logo">AÑAÑAI <span>·</span> Ventas & Cobros</div>
+  <div class="tabs">
+    <button class="tab on" data-tab="fin">💰 Financiero</button>
+    <button class="tab" data-tab="cxc">📋 CXC por cliente</button>
+    <button class="tab" data-tab="stats">📊 Estadísticas</button>
+    <button class="tab" data-tab="tabla">🗂 Tabla</button>
+    <button class="tab" data-tab="eerr">📊 EERR</button>
+    <button class="tab" data-tab="gastos">💸 Gastos</button>
+  </div>
+  <div class="toggle-wrap">
+    <div class="toggle-label"><b>Incluir Añañai</b><br>(consumo interno)</div>
+    <label class="tog"><input type="checkbox" id="togAnanai"><span class="tog-sl"></span></label>
+    <span class="badge" id="togBadge">Sin Añañai</span>
+  </div>
+</div>
+
+<main>
+
+<!-- ══ FINANCIERO ══ -->
+<div class="sec on" id="sec-fin">
+  <div class="fbar">
+    <span class="fl">Período:</span>
+    <input type="date" class="date-input" id="finDesde">
+    <span class="date-sep">→</span>
+    <input type="date" class="date-input" id="finHasta">
+    <select id="finMes" class="date-input" style="min-width:120px" title="Elegí un mes"></select>
+    <button class="frst" id="rstFin">↺ Todo el período</button>
+    <span class="fcnt" id="finCnt"></span>
+  </div>
+  <div class="kpis">
+    <div class="kpi g"><div class="kl">Facturación total</div><div class="kv" id="k-fact">—</div><div class="ks" id="k-fact-s">—</div></div>
+    <div class="kpi r"><div class="kl">CXC pendiente</div><div class="kv" id="k-cxc">—</div><div class="ks" id="k-cxc-s">—</div></div>
+    <div class="kpi y"><div class="kl">Total cobrado</div><div class="kv" id="k-cob">—</div><div class="ks" id="k-cob-s">—</div></div>
+    <div class="kpi p"><div class="kl">DSO estimado</div><div class="kv" id="k-dso">—</div><div class="ks">días · método agregado</div></div>
+    <div class="kpi o"><div class="kl">Sin valorizar</div><div class="kv" id="k-sv">—</div><div class="ks">despachos sin precio</div></div>
+  </div>
+  <div class="g32">
+    <div class="card"><div class="ct">Facturación semanal</div><div class="cs">Externo vs. Añañai interno · montos confirmados</div><canvas id="chSem" height="110"></canvas></div>
+    <div class="card"><div class="ct">Mix de facturación</div><div class="cs">Canal externo vs. interno</div><div style="max-width:190px;margin:0 auto"><canvas id="chMix" height="175"></canvas></div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ct">Aging de CXC</div><div class="cs">Proporción del saldo pendiente por antigüedad de despacho</div><div id="agWrap" style="margin-top:8px"></div></div>
+    <div class="card"><div class="ct">Facturación por producto — Top 8</div><div class="cs">Período seleccionado</div><canvas id="chProd" height="190"></canvas></div>
+  </div>
+  <div class="card" id="peCard" style="margin-top:14px">
+    <div class="ct" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+      <span>🎯 Objetivo de ventas y Punto de equilibrio <span id="peScope" style="font-weight:400;color:var(--muted);font-size:11px"></span></span>
+      <select id="peMes" class="date-input" style="min-width:135px"></select>
+    </div>
+    <div class="cs">Mes completo — independiente del filtro de arriba · objetivo y costos fijos editables en la hoja «Metas»</div>
+    <div id="peBody" style="margin-top:14px"></div>
+  </div>
+</div>
+
+<!-- ══ CXC POR CLIENTE ══ -->
+<div class="sec" id="sec-cxc">
+  <div class="fbar">
+    <span class="fl">Período:</span>
+    <input type="date" class="date-input" id="cxcDesde">
+    <span class="date-sep">→</span>
+    <input type="date" class="date-input" id="cxcHasta">
+    <button class="frst" id="rstCxc">↺ Todo el período</button>
+    <span class="fcnt" id="cxcCnt"></span>
+  </div>
+  <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi r"><div class="kl">CXC total</div><div class="kv" id="c-tot">—</div><div class="ks">saldo pendiente</div></div>
+    <div class="kpi y"><div class="kl">Clientes con deuda</div><div class="kv" id="c-n">—</div><div class="ks">de los activos</div></div>
+    <div class="kpi g"><div class="kl">Mayor deudor</div><div class="kv" id="c-top">—</div><div class="ks" id="c-top-s">—</div></div>
+    <div class="kpi p"><div class="kl">Antigüedad máx.</div><div class="kv" id="c-old">—</div><div class="ks" id="c-old-s">—</div></div>
+  </div>
+  <div class="gf"><div class="card">
+    <div class="ct">Cobros de la semana <span style="font-weight:400;color:var(--muted);font-size:11px">· independiente del filtro de arriba · sobre todos los cobros</span></div>
+    <div class="cs">Última semana con cobros vs. mediana de las semanas cerradas desde May-2026</div>
+    <div id="cxcComp" style="margin-top:8px"></div>
+  </div></div>
+  <div class="gf"><div class="card">
+    <div class="ct">Saldo CXC por cliente — todos los clientes</div>
+    <div class="cs" id="cxcCardSub">Facturación total del cliente menos lo cobrado · saldo pendiente de cobro · clic en fila para ver despachos del período</div>
+    <div id="cxcTbl" style="margin-top:11px"></div>
+  </div></div>
+  <div class="gf" id="detWrap" style="display:none"><div class="card">
+    <div class="ct" id="detTitle">—</div><div class="cs" id="detSub">—</div>
+    <div class="tw" style="margin-top:11px"><table id="detTbl"></table></div>
+  </div></div>
+</div>
+
+<!-- ══ ESTADÍSTICAS ══ -->
+<div class="sec" id="sec-stats">
+  <div class="stat-kpis">
+    <div class="kpi g"><div class="kl">Ticket promedio</div><div class="kv" id="s-tk">—</div><div class="ks">por despacho valorizado</div></div>
+    <div class="kpi y"><div class="kl">Despachos / mes</div><div class="kv" id="s-dm">—</div><div class="ks">promedio mensual</div></div>
+    <div class="kpi p"><div class="kl">Producto top</div><div class="kv" id="s-pt">—</div><div class="ks" id="s-pt-s">—</div></div>
+    <div class="kpi o"><div class="kl">Cliente top</div><div class="kv" id="s-ct">—</div><div class="ks" id="s-ct-s">—</div></div>
+  </div>
+  <div class="gf"><div class="card">
+    <div class="ct">Comparativas <span style="font-weight:400;color:var(--muted);font-size:11px">· independientes de los filtros de abajo · sobre todos los datos</span></div>
+    <div class="cs">Mes en curso vs. historial · última semana vs. mediana semanal</div>
+    <div id="stComp" style="margin-top:8px"></div>
+  </div></div>
+  <div class="fbar">
+    <span class="fl">Período:</span>
+    <input type="date" class="date-input" id="stDesde">
+    <span class="date-sep">→</span>
+    <input type="date" class="date-input" id="stHasta">
+    <span class="fl">Producto:</span>
+    <select class="fsel" id="spf"><option value="">Todos</option></select>
+    <button class="frst" id="rsts">↺ Limpiar</button>
+    <span class="fcnt" id="sct">—</span>
+  </div>
+  <div class="g32">
+    <div class="card"><div class="ct">Tendencia semanal</div><div class="cs">Facturación por semana · selección activa</div><canvas id="chTend" height="130"></canvas></div>
+    <div class="card"><div class="ct">Por cliente — Top 8</div><div class="cs">Selección activa</div><canvas id="chCli" height="190"></canvas></div>
+  </div>
+  <div class="gf"><div class="card"><div class="ct">Resumen por producto</div><div class="cs" id="stSub">—</div>
+    <div class="tw" style="margin-top:11px"><table id="stTbl"></table></div>
+  </div></div>
+</div>
+
+<!-- ══ TABLA ══ -->
+<div class="sec" id="sec-tabla">
+  <div class="fbar">
+    <span class="fl">Período:</span>
+    <input type="date" class="date-input" id="tbDesde">
+    <span class="date-sep">→</span>
+    <input type="date" class="date-input" id="tbHasta">
+    <span class="fl">Cliente:</span><select class="fsel" id="tcl"><option value="">Todos</option></select>
+    <span class="fl">Producto:</span><select class="fsel" id="tpr"><option value="">Todos</option></select>
+    <span class="fl">Estado:</span>
+    <select class="fsel" id="test">
+      <option value="all">Todos</option>
+      <option value="Pendiente">Pendiente</option>
+      <option value="Cobrado">Cobrado</option>
+    </select>
+    <button class="frst" id="rstt">↺ Limpiar</button>
+    <span class="fcnt" id="tct">—</span>
+  </div>
+  <div class="card"><div class="tw"><table id="mainTbl"></table></div></div>
+</div>
+
+
+<!-- ══ EERR ══ -->
+<div class="sec" id="sec-eerr">
+
+  <!-- Sub-vista selector -->
+  <div class="fbar" style="margin-bottom:14px">
+    <span class="fl">Vista:</span>
+    <div class="btog" id="eerrVista">
+      <button class="bb on" data-v="sem">Semanal por mes</button>
+      <button class="bb" data-v="libre">Rango libre</button>
+      <button class="bb" data-v="mvm">Mes vs mes</button>
+    </div>
+    <!-- Semanal por mes: month buttons (dynamic) -->
+    <div id="eerrMesBtns" style="display:flex;gap:4px;flex-wrap:wrap"></div>
+    <!-- Rango libre: date pickers -->
+    <div id="eerrRangoWrap" style="display:none;align-items:center;gap:8px">
+      <input type="date" class="date-input" id="eerrDesde">
+      <span class="date-sep">→</span>
+      <input type="date" class="date-input" id="eerrHasta">
+    </div>
+    <button class="frst" id="rstEerr">↺ Limpiar</button>
+    <span class="fcnt" id="eerrCnt"></span>
+  </div>
+
+  <!-- EERR Table -->
+  <div class="gf">
+    <div class="card">
+      <div class="ct" id="eerrCardTitle">Estado de Resultados</div>
+      <div class="cs" id="eerrCardSub">Cálculo en tiempo real · CMV por costo estándar configurado</div>
+      <div class="tw" style="margin-top:14px;max-height:none">
+        <table id="eerrTbl"></table>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs below table -->
+  <div class="kpis" style="grid-template-columns:repeat(4,1fr);margin-top:14px">
+    <div class="kpi g"><div class="kl">Margen Contribución</div><div class="kv" id="e-mc">—</div><div class="ks" id="e-mc-s">% sobre facturación</div></div>
+    <div class="kpi y"><div class="kl">EBITDA</div><div class="kv" id="e-ebitda">—</div><div class="ks" id="e-ebitda-s">resultado operativo</div></div>
+    <div class="kpi r"><div class="kl">Gastos fijos</div><div class="kv" id="e-cf">—</div><div class="ks">servicios + personal + honorarios</div></div>
+    <div class="kpi o"><div class="kl">Inversión en equip. e infraestructura</div><div class="kv" id="e-cap">—</div><div class="ks">no afecta EBITDA</div></div>
+  </div>
+
+  <!-- Márgenes por producto -->
+  <div class="gf" id="eerrMargWrap" style="margin-top:14px">
+    <div class="card">
+      <div class="ct">Márgenes por producto</div>
+      <div class="cs">Margen unitario (P − CV) / P · precio promedio realizado vs. CVU configurado · período seleccionado. Los productos sin CVU configurado no computan CMV.</div>
+      <div class="tw" style="margin-top:12px"><table id="eerrMargTbl"></table></div>
+    </div>
+  </div>
+
+  <!-- Mes vs Mes chart -->
+  <div class="gf" id="eerrMvMWrap" style="display:none;margin-top:14px">
+    <div class="card">
+      <div class="ct">Evolución mensual — Facturación vs Costos vs EBITDA</div>
+      <div class="cs">Mes a mes · montos acumulados</div>
+      <canvas id="chMvM" height="90"></canvas>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ GASTOS ══ -->
+<div class="sec" id="sec-gastos">
+  <div class="fbar">
+    <span class="fl">Mes:</span>
+    <select id="gasMes" class="date-input" style="min-width:150px"></select>
+    <span class="fcnt" id="gasCnt"></span>
+  </div>
+  <div class="kpis" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi g"><div class="kl">Gasto total del mes</div><div class="kv" id="g-acu">—</div><div class="ks" id="g-acu-s">—</div></div>
+    <div class="kpi o"><div class="kl">Gastos fijos / Ventas</div><div class="kv" id="g-fv">—</div><div class="ks" id="g-fv-s">—</div></div>
+    <div class="kpi p"><div class="kl">Variable / Fijo</div><div class="kv" id="g-vf">—</div><div class="ks" id="g-vf-s">—</div></div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ct">Gastos por categoría</div><div class="cs" id="gasCatSub">Mes seleccionado</div><canvas id="chGasCat" height="200"></canvas></div>
+    <div class="card"><div class="ct">Gastos por subcategoría</div><div class="cs">Mes seleccionado · detalle dentro de cada grupo</div><canvas id="chGasSub" height="200"></canvas></div>
+  </div>
+  <div class="gf"><div class="card">
+    <div class="ct">Fijos vs Variables — evolución mensual <span style="font-weight:400;color:var(--muted);font-size:11px">· todos los meses (independiente del filtro)</span></div>
+    <div class="cs">Variables reales imputados en el sistema (materia prima + logística) · fijos operativos · CAPEX aparte</div>
+    <canvas id="chGasFV" height="105"></canvas>
+  </div></div>
+  <div class="gf"><div class="card">
+    <div class="ct">Mediana mensual vs. gasto del mes <span id="gasStatMes" style="font-weight:400;color:var(--muted);font-size:11px"></span></div>
+    <div class="cs">La mediana es fija: se calcula solo sobre meses cerrados desde May-2026 (excluye el mes en curso y el arranque de abril) · no cambia al elegir otro mes</div>
+    <div class="tw" style="margin-top:10px"><table id="gasStatTbl"></table></div>
+  </div></div>
+</div>
+
+</main>
+
+<script>
+var RAW  = JSON.parse('<?= datos ?>');
+var DES  = RAW.despachos;
+var COB  = RAW.cobros;
+var META = RAW.meta;
+var GRAW = JSON.parse('<?= gastos ?>');
+var GAS  = GRAW.gastos;   // array of expense records
+var CMV  = GRAW.cmv;      // array of {prod, var, cvu, desc}
+var HOY  = new Date(META.hoy);
+
+// ── UTILS ─────────────────────────────────────────────────────────
+var C={a:'#4f8ef7',a2:'#f7c84f',a3:'#4fd9a0',d:'#f76f6f',p:'#b48ef7',o:'#f79f4f',mu:'#8891a8',bd:'#2a3050',tx:'#e8ecf4',lb:'#c2c9d9'};
+var PAL=[C.a,C.a3,C.a2,C.d,C.p,C.o,'#4fb8f7','#f74fa4','#a4f74f','#f7d94f'];
+function fmtM(v){if(v==null||isNaN(v))return'—';var s=v<0?'-':'';var a=Math.abs(v);return a>=1e6?'$'+s+(a/1e6).toFixed(2)+'M':a>=1e3?'$'+s+(a/1e3).toFixed(0)+'K':'$'+s+Math.round(a);}
+function fmt(v){return v==null?'—':'$'+Math.round(v).toLocaleString('es-AR');}
+function n(v){return typeof v==='number'?v.toLocaleString('es-AR'):String(v||'—');}
+function r1(v){return Math.round(v*10)/10;}
+function dAgo(f){if(!f)return null;return Math.floor((HOY-new Date(f))/864e5);}
+
+// FIX: normalize accented chars before comparing — 'Añañai' → 'ananai'
+function normStr(s){
+  return String(s).toLowerCase()
+    .replace(/[àáâãäå]/g,'a').replace(/[èéêë]/g,'e')
+    .replace(/[ìíîï]/g,'i').replace(/[òóôõö]/g,'o')
+    .replace(/[ùúûü]/g,'u').replace(/ñ/g,'n')
+    .replace(/[^a-z]/g,'');
+}
+function isAnanai(cli){ return normStr(cli) === 'ananai'; }
+
+// Convierte el 'sem' (fecha del SÁBADO de inicio, formato "dd/MM") en un rango legible
+// "dd/MM \u2013 dd/MM" (sábado a viernes) para que la leyenda refleje la SEMANA, no un día.
+// Orden cronológico de etiquetas de semana "dd/MM": hay que ordenar por MES y después
+// por DÍA. Con .sort() alfabético "04/07" (jul) quedaba antes que "06/06" (jun).
+function semKey(x){ var p=String(x).split('/'); return (p[1]||'')+(p[0]||''); }
+function semSort(a,b){ return semKey(a).localeCompare(semKey(b)); }
+
+function semRango(sem){
+  if(!sem) return sem;
+  var p=String(sem).split('/'); if(p.length!==2) return sem;
+  var dd=parseInt(p[0],10), mm=parseInt(p[1],10);
+  if(isNaN(dd)||isNaN(mm)) return sem;
+  var yr=2026; try{ if(typeof META!=='undefined' && META && META.hoy){ var y=new Date(META.hoy).getFullYear(); if(y) yr=y; } }catch(e){}
+  var ini=new Date(yr, mm-1, dd);              // sábado
+  var fin=new Date(ini); fin.setDate(fin.getDate()+6);  // viernes
+  function ff(x){ return ('0'+x.getDate()).slice(-2)+'/'+('0'+(x.getMonth()+1)).slice(-2); }
+  return ff(ini)+' \u2013 '+ff(fin);
+}
+
+// ── DATE RANGE STATE ──────────────────────────────────────────────
+var DATES = { fin:{desde:'',hasta:''}, cxc:{desde:'',hasta:''}, st:{desde:'',hasta:''}, tb:{desde:'',hasta:''} };
+var MIN_DATE = META.fecha_desde;
+var MAX_DATE = META.fecha_hasta;
+
+function initDateInputs(){
+  var pairs = [
+    ['finDesde','finHasta','fin'],
+    ['cxcDesde','cxcHasta','cxc'],
+    ['stDesde','stHasta','st'],
+    ['tbDesde','tbHasta','tb']
+  ];
+  pairs.forEach(function(p){
+    var dEl=document.getElementById(p[0]); var hEl=document.getElementById(p[1]); var key=p[2];
+    dEl.min=MIN_DATE; dEl.max=MAX_DATE; dEl.value=MIN_DATE;
+    hEl.min=MIN_DATE; hEl.max=MAX_DATE; hEl.value=MAX_DATE;
+    DATES[key].desde=MIN_DATE; DATES[key].hasta=MAX_DATE;
+    dEl.addEventListener('change',function(){DATES[key].desde=this.value; if(key==='fin'){var fm=document.getElementById('finMes'); if(fm)fm.value='';} renderForTab(key);});
+    hEl.addEventListener('change',function(){DATES[key].hasta=this.value; if(key==='fin'){var fm=document.getElementById('finMes'); if(fm)fm.value='';} renderForTab(key);});
+  });
+}
+
+function renderForTab(key){
+  if(key==='fin')  renderFin();
+  if(key==='cxc')  renderCXC();
+  if(key==='st')   renderStats();
+  if(key==='tb')   renderTabla();
+}
+
+function inRange(f, key){
+  if(!f) return false;
+  return f >= DATES[key].desde && f <= DATES[key].hasta;
+}
+
+// ── STATE ─────────────────────────────────────────────────────────
+var inclAn = false;
+var tab = 'fin';
+var cxcBaseMode = 'total'; // 'total' o 'credito'
+var sProd = '', tCli = '', tProd = '', tEst = 'all';
+var chSem, chMix, chProd, chTend, chCli, chGasCat, chGasSub, chGasFV;
+var BO={responsive:true,maintainAspectRatio:true,animation:{duration:180},
+  plugins:{legend:{labels:{color:C.lb,font:{family:'Inter',size:10},boxWidth:10,padding:9}},
+  tooltip:{backgroundColor:'#1e2335',borderColor:C.bd,borderWidth:1,titleColor:C.tx,bodyColor:C.lb,padding:9}},
+  scales:{x:{ticks:{color:C.mu,font:{size:10}},grid:{color:'rgba(42,48,80,.5)'}},
+          y:{ticks:{color:C.mu,font:{size:10},callback:function(v){return fmtM(v);}},grid:{color:'rgba(42,48,80,.5)'}}}};
+
+// ── FILTER HELPERS ────────────────────────────────────────────────
+function desFor(key){ return DES.filter(function(r){ return (!inclAn && isAnanai(r.cli)) ? false : inRange(r.f, key); }); }
+function cobFor(key){ return COB.filter(function(r){ return (!inclAn && isAnanai(r.cli)) ? false : inRange(r.f, key); }); }
+// For CXC we always use ALL cobros (saldo histórico), not filtered by date
+function allCob(){ return COB.filter(function(r){ return inclAn || !isAnanai(r.cli); }); }
+function allDes(){ return DES.filter(function(r){ return inclAn || !isAnanai(r.cli); }); }
+
+// ── Meses (para el selector del PE y el dropdown del filtro) ──
+var MESES_NOM=['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+
+// ── Base de cálculo de las MEDIANAS ────────────────────────────────
+// Primer mes que entra en la mediana. Abr-2026 fue el mes de arranque (parcial)
+// y no es representativo. EDITAR acá si en el futuro se quiere mover el corte.
+var MED_DESDE='2026-05';
+// Mes en curso (todavía incompleto): se excluye de la mediana hasta que termine.
+function mesCorriente(){ return String(META.hoy||'').slice(0,7); }
+// Meses que forman la base: desde MED_DESDE y ya cerrados.
+function mesesBase(ms){
+  var hoy=mesCorriente();
+  var b=ms.filter(function(m){ return m>=MED_DESDE && m!==hoy; });
+  return b.length?b:ms.slice();   // fallback: si no queda ninguno, uso todos
+}
+// Etiqueta de los meses de la base, ej. "May–Jun"
+function baseLbl(b){ return b.length?(b.length===1?mesLabel(b[0]):mesLabel(b[0])+'–'+mesLabel(b[b.length-1])):'—'; }
+// Corte equivalente para semanas: 'MMdd' del 1° de MED_DESDE (semKey compara MM+dd)
+function semDesdeKey(){ return MED_DESDE.split('-')[1]+'01'; }
+var peMonth='';
+var gasMonth='';
+function mesLabel(m){ var p=String(m).split('-'); return (MESES_NOM[parseInt(p[1],10)-1]||'')+' '+p[0]; }
+function mesRango(m){ var p=String(m).split('-'); var last=new Date(+p[0],+p[1],0).getDate(); return {desde:m+'-01', hasta:m+'-'+('0'+last).slice(-2)}; }
+function mesesEnDatos(){ var s={}; DES.forEach(function(r){ if(r.m) s[r.m]=true; }); return Object.keys(s).sort(); }
+function poblarMeses(){
+  var ms=mesesEnDatos();
+  var peSel=document.getElementById('peMes');
+  if(peSel){
+    peSel.innerHTML=ms.map(function(m){return '<option value="'+m+'">'+mesLabel(m)+'</option>';}).join('');
+    peMonth = ms.length?ms[ms.length-1]:(META.hoy||'').slice(0,7);
+    peSel.value=peMonth;
+    peSel.addEventListener('change',function(){ peMonth=this.value; renderPE(); });
+  }
+  var finSel=document.getElementById('finMes');
+  if(finSel){
+    finSel.innerHTML='<option value="">Rango libre</option>'+ms.map(function(m){return '<option value="'+m+'">'+mesLabel(m)+'</option>';}).join('');
+    finSel.addEventListener('change',function(){
+      if(!this.value) return;
+      var r=mesRango(this.value);
+      DATES.fin.desde=r.desde; DATES.fin.hasta=r.hasta;
+      var dEl=document.getElementById('finDesde'), hEl=document.getElementById('finHasta');
+      if(dEl)dEl.value=r.desde; if(hEl)hEl.value=r.hasta;
+      renderFin();
+    });
+  }
+  var gasSel=document.getElementById('gasMes');
+  if(gasSel){
+    var mg=mesesGastos();
+    gasSel.innerHTML=mg.map(function(m){return '<option value="'+m+'">'+mesLabel(m)+'</option>';}).join('');
+    gasMonth = mg.length?mg[mg.length-1]:'';
+    gasSel.value=gasMonth;
+    gasSel.addEventListener('change',function(){ gasMonth=this.value; renderGastos(); });
+  }
+}
+
+// ── TABS ──────────────────────────────────────────────────────────
+function goTab(t){
+  tab=t;
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
+  document.querySelectorAll('.sec').forEach(function(s){s.classList.toggle('on',s.id==='sec-'+t);});
+  if(t==='fin')   renderFin();
+  if(t==='cxc')   renderCXC();
+  if(t==='stats') renderStats();
+  if(t==='tabla') renderTabla();
+  if(t==='eerr')  renderEERR();
+  if(t==='gastos') renderGastos();
+}
+
+// ── TOGGLE AÑAÑAI ─────────────────────────────────────────────────
+document.getElementById('togAnanai').addEventListener('change',function(){
+  inclAn=this.checked;
+  var b=document.getElementById('togBadge');
+  b.textContent=inclAn?'Con Añañai':'Sin Añañai';
+  b.className='badge'+(inclAn?' on':'');
+  renderAll();
+});
+
+function renderAll(){
+  if(tab==='fin')   renderFin();
+  if(tab==='cxc')   renderCXC();
+  if(tab==='stats') renderStats();
+  if(tab==='tabla') renderTabla();
+  if(tab==='gastos') renderGastos();
+}
+
+// ════════════════════════════════════════════════════════════════
+// FINANCIERO
+// ════════════════════════════════════════════════════════════════
+function renderFin(){
+  var d=desFor('fin'); var c=cobFor('fin');
+  var tot =d.reduce(function(s,r){return s+(r.mt||0);},0);
+  var extF=d.filter(function(r){return !isAnanai(r.cli);}).reduce(function(s,r){return s+(r.mt||0);},0);
+  var intF=d.filter(function(r){return isAnanai(r.cli);}).reduce(function(s,r){return s+(r.mt||0);},0);
+  var sv  =d.filter(function(r){return !r.mt;}).length;
+  // CXC: use ALL history for balance calculation (not just date-filtered)
+  var facTot=allDes().filter(function(r){return r.mt;}).reduce(function(s,r){return s+(r.mt||0);},0);
+  var cobTot =allCob().reduce(function(s,r){return s+(r.neto||r.mt||0);},0);
+  var cxcTot =Math.max(0,facTot-cobTot);
+  var pctCob =facTot>0?(cobTot/facTot*100).toFixed(1):0;
+  var pctCXC =facTot>0?(cxcTot/facTot*100).toFixed(1):0;
+  // DSO solo sobre base crédito — contado no tiene ciclo de cobranza
+  var facCredDSO = allDes().filter(function(r){return r.cond==='Crédito'&&r.mt;}).reduce(function(s,r){return s+r.mt;},0);
+  var cxcCredDSO = Math.max(0, facCredDSO - cobTot);
+  var dso = facCredDSO>0 ? Math.round(cxcCredDSO/(facCredDSO/META.period_days)) : 0;
+
+  document.getElementById('k-fact').textContent  =fmtM(tot);
+  document.getElementById('k-fact-s').textContent=n(d.filter(function(r){return r.mt;}).length)+' despachos valorizados';
+  document.getElementById('k-cxc').textContent   =fmtM(cxcTot);
+  document.getElementById('k-cxc-s').textContent =pctCXC+'% sin cobrar (histórico)';
+  document.getElementById('k-cob').textContent   =fmtM(cobTot);
+  document.getElementById('k-cob-s').textContent =pctCob+'% de cobranza (histórico)';
+  document.getElementById('k-dso').textContent   =dso+'d';
+  document.getElementById('k-sv').textContent    =sv;
+  document.getElementById('finCnt').textContent  =d.length+' despachos en el período';
+  renderPE();
+
+  // Semanal
+  var semM={};
+  d.forEach(function(r){if(!r.sem||!r.mt)return;if(!semM[r.sem])semM[r.sem]={e:0,i:0};isAnanai(r.cli)?semM[r.sem].i+=r.mt:semM[r.sem].e+=r.mt;});
+  var sems=Object.keys(semM).sort(semSort);
+  if(chSem)chSem.destroy();
+  chSem=new Chart(document.getElementById('chSem'),{type:'bar',data:{labels:sems.map(semRango),datasets:[
+    {label:'Externos',data:sems.map(function(s){return r1(semM[s].e);}),backgroundColor:'rgba(79,142,247,.8)',borderRadius:3,borderWidth:0,stack:'s'},
+    {label:'Añañai',data:sems.map(function(s){return inclAn?r1(semM[s].i):0;}),backgroundColor:'rgba(247,159,79,.65)',borderRadius:3,borderWidth:0,stack:'s'}
+  ]},options:{...BO,scales:{x:BO.scales.x,y:{...BO.scales.y,stacked:true}}}});
+
+  // Mix dona
+  if(chMix)chMix.destroy();
+  var mxD=inclAn?[r1(extF),r1(intF)]:[r1(tot)];
+  var mxL=inclAn?['Externos','Añañai']:['Externos'];
+  var mxC=inclAn?[C.a,C.o]:[C.a];
+  chMix=new Chart(document.getElementById('chMix'),{type:'doughnut',data:{labels:mxL,datasets:[{data:mxD,backgroundColor:mxC,borderWidth:3,borderColor:'#1e2335'}]},
+    options:{responsive:true,maintainAspectRatio:true,cutout:'60%',animation:{duration:180},
+      plugins:{legend:{position:'bottom',labels:{color:C.lb,font:{family:'Inter',size:11},boxWidth:10,padding:10}},
+               tooltip:{backgroundColor:'#1e2335',borderColor:C.bd,borderWidth:1,titleColor:C.tx,bodyColor:C.lb,padding:9,callbacks:{label:function(ctx){return ' '+ctx.label+': '+fmtM(ctx.parsed);}}}}}});
+
+  // Aging sobre CXC histórico proporcional
+  var allPend=allDes().filter(function(r){return r.mt;});
+  var ag={a:0,b:0,c:0,dd:0},agT=0;
+  allPend.forEach(function(r){var dg=dAgo(r.f)||0;if(dg<=15)ag.a+=r.mt;else if(dg<=30)ag.b+=r.mt;else if(dg<=60)ag.c+=r.mt;else ag.dd+=r.mt;agT+=r.mt;});
+  var sc=agT>0?cxcTot/agT:0;
+  var items=[{l:'0–15d',v:ag.a*sc,c:C.a3},{l:'16–30d',v:ag.b*sc,c:C.a2},{l:'31–60d',v:ag.c*sc,c:C.o},{l:'+60d',v:ag.dd*sc,c:C.d}];
+  var agH=''; var agTot=cxcTot||1;
+  items.forEach(function(it){var w=Math.round(it.v/agTot*100)||0;var pct=(it.v/agTot*100).toFixed(1);
+    agH+='<div class="ag-row"><span class="ag-l">'+it.l+'</span>'
+      +'<div class="ag-bw"><div class="ag-b" style="width:'+w+'%;background:'+it.c+'"></div></div>'
+      +'<span class="ag-v" style="color:'+it.c+'">'+fmtM(it.v)+'</span><span class="ag-p">'+pct+'%</span></div>';});
+  agH+='<div style="margin-top:9px;font-size:10.5px;color:var(--muted)">Proporción estimada sobre saldo CXC total · antigüedad desde fecha de despacho</div>';
+  document.getElementById('agWrap').innerHTML=agH;
+
+  // Productos top 8
+  var pm={};d.forEach(function(r){if(r.p&&r.mt)pm[r.p]=(pm[r.p]||0)+r.mt;});
+  var ps=Object.keys(pm).sort(function(a,b){return pm[b]-pm[a];}).slice(0,8);
+  if(chProd)chProd.destroy();
+  chProd=new Chart(document.getElementById('chProd'),{type:'bar',data:{labels:ps,datasets:[{label:'Facturación',data:ps.map(function(p){return r1(pm[p]);}),backgroundColor:PAL,borderRadius:4,borderWidth:0}]},
+    options:{...BO,indexAxis:'y',plugins:{...BO.plugins,legend:{display:false},tooltip:{...BO.plugins.tooltip,callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.x);}}}},
+      scales:{x:{...BO.scales.x,ticks:{...BO.scales.x.ticks,callback:function(v){return fmtM(v);}}},y:{ticks:{color:C.lb,font:{size:10}},grid:{display:false}}}}});
+}
+
+// ════════════════════════════════════════════════════════════════
+// OBJETIVO DE VENTAS + PUNTO DE EQUILIBRIO (tab Financiero)
+// ════════════════════════════════════════════════════════════════
+function renderPE(){
+  var body=document.getElementById('peBody'); if(!body) return;
+  if(!peMonth){ var ms=mesesEnDatos(); peMonth=ms.length?ms[ms.length-1]:(META.hoy||'').slice(0,7); }
+  var OBJ=Number(META.objetivo)||35900000, CF=Number(META.cf)||5400000;
+  var dm=allDes().filter(function(r){ return r.m===peMonth; });
+  var tot=dm.reduce(function(s,r){return s+(r.mt||0);},0);
+  var cmv=0; dm.forEach(function(r){ if(!r.mt||!r.u) return; var cvu=getCVU(r.p,r.v); if(cvu) cmv+=cvu*r.u; });
+  var mc=tot-cmv, mcPct=tot>0?mc/tot:0;
+  var pe=mcPct>0?CF/mcPct:0;
+  document.getElementById('peScope').textContent='· MC '+(mcPct*100).toFixed(1)+'% · CF '+fmtM(CF);
+
+  function bar(pct,color){ var w=Math.max(0,Math.min(100,pct*100)); return '<div style="height:15px;background:#2a2f45;border-radius:8px;overflow:hidden;margin-top:5px"><div style="height:100%;width:'+w+'%;background:'+color+';border-radius:8px"></div></div>'; }
+  function fila(titulo, actual, meta, color){
+    var pct=meta>0?actual/meta:0;
+    return '<div style="margin-bottom:14px">'
+      +'<div style="display:flex;justify-content:space-between;align-items:baseline;font-size:12px">'
+      +'<span style="font-weight:700;color:var(--text)">'+titulo+'</span>'
+      +'<span style="color:var(--muted)">'+fmtM(actual)+' / <b style="color:var(--text)">'+fmtM(meta)+'</b> · '+(pct*100).toFixed(0)+'%</span></div>'
+      +bar(pct,color)+'</div>';
+  }
+  var h='';
+  h+=fila('Objetivo de ventas del mes', tot, OBJ, '#4f8ef7');
+  h+=fila('Punto de equilibrio', tot, pe, (tot>=pe?'#2FA37A':'#C8901F'));
+
+  // Proyección por día del mes (independiente del filtro superior)
+  var y=+peMonth.split('-')[0], mo=+peMonth.split('-')[1];
+  var diasMes=new Date(y,mo,0).getDate();
+  var hoyMes=(META.hoy||'').slice(0,7);
+  var hoyDia=new Date((META.hoy||'')+'T00:00:00').getDate();
+  var diasTransc = (peMonth>hoyMes)?0 : (peMonth<hoyMes?diasMes:hoyDia);
+  var proj='', pcol='var(--muted)';
+  if(mcPct<=0){ proj='Sin margen de contribución calculable en '+mesLabel(peMonth)+'.'; }
+  else if(tot>=pe){ proj='✅ Punto de equilibrio cubierto. Contribución por encima de los costos fijos: <b>'+fmtM(mc-CF)+'</b>.'; pcol='#2FA37A'; }
+  else if(diasTransc===0){ proj=mesLabel(peMonth)+' todavía no comenzó.'; }
+  else {
+    var ritmo=tot/diasTransc, faltan=pe-tot;
+    if(peMonth<hoyMes){ proj='En '+mesLabel(peMonth)+' no se alcanzó el PE: faltaron <b>'+fmtM(faltan)+'</b>.'; pcol='#C8901F'; }
+    else {
+      var diaPE=Math.ceil(pe/ritmo);
+      if(diaPE<=diasMes){ proj='Al ritmo actual (<b>'+fmtM(ritmo)+'/día</b>) llegás al punto de equilibrio ~el <b>día '+diaPE+'</b> ('+('0'+diaPE).slice(-2)+'/'+('0'+mo).slice(-2)+'). ✅'; pcol='#2FA37A'; }
+      else { var diasRest=Math.max(1,diasMes-diasTransc); proj='Al ritmo actual no llegás al PE este mes. Necesitás ~<b>'+fmtM(faltan/diasRest)+'/día</b> en los '+diasRest+' días que quedan.'; pcol='#C8901F'; }
+    }
+  }
+  h+='<div style="margin-top:4px;padding:10px 12px;background:#20263c;border-radius:8px;border-left:3px solid '+pcol+';font-size:12px;color:var(--label)">'+proj+'</div>';
+  if(!Number(META.objetivo)||!Number(META.cf)){ h+='<div style="margin-top:8px;font-size:10.5px;color:var(--muted)">⚙ Usando valores por defecto. Editá objetivo y costos fijos en la hoja «Metas» (menú 🛒 AÑAÑAI Ventas → 🎯 Metas del mes).</div>'; }
+  body.innerHTML=h;
+}
+
+// ════════════════════════════════════════════════════════════════
+// COMPARATIVAS (Estadísticas y CXC) — siempre sobre todos los datos
+// ════════════════════════════════════════════════════════════════
+function renderStatsComp(){
+  var el=document.getElementById('stComp'); if(!el) return;
+  var d=allDes();
+  var meses={}; d.forEach(function(r){ if(r.m){ if(!meses[r.m]) meses[r.m]={n:0,mt:0,v:0}; meses[r.m].n++; if(r.mt){meses[r.m].mt+=r.mt; meses[r.m].v++;} } });
+  var mk=Object.keys(meses).sort();
+  if(!mk.length){ el.innerHTML='<div class="empty">Sin datos</div>'; return; }
+  var act=mk[mk.length-1], prev=mk.length>1?mk[mk.length-2]:null;
+  var h='';
+  // 1) Despachos del mes: actual vs anterior
+  h+=cmpRow('Despachos del mes', mesLabel(act)+(prev?' vs '+mesLabel(prev):' · sin mes previo'),
+      n(meses[act].n), prev?n(meses[prev].n):'—', meses[act].n, prev?meses[prev].n:0, true);
+  // 2) Ticket promedio: mes actual vs promedio de meses anteriores
+  var tkAct=meses[act].v?meses[act].mt/meses[act].v:0;
+  var mkB=mk.slice(0,-1).filter(function(m){ return m>=MED_DESDE && m!==mesCorriente(); });
+  var tkPrev=mkB.map(function(m){ return meses[m].v?meses[m].mt/meses[m].v:0; }).filter(function(x){return x>0;});
+  var tkBase=mediana(tkPrev);
+  h+=cmpRow('Ticket promedio', mesLabel(act)+' vs mediana de meses cerrados ('+baseLbl(mkB)+')',
+      fmtM(tkAct), tkPrev.length?fmtM(tkBase):'—', tkAct, tkBase, true);
+  // 3) Facturación semanal: última semana vs promedio y mediana
+  var sw={}; d.forEach(function(r){ if(r.sem&&r.mt) sw[r.sem]=(sw[r.sem]||0)+r.mt; });
+  var sk=Object.keys(sw).sort(semSort);
+  if(sk.length){
+    var ult=sk[sk.length-1], uv=sw[ult];
+    var otras=sk.slice(0,-1).filter(function(k){return semKey(k)>=semDesdeKey();}).map(function(k){return sw[k];});
+    var mS=mediana(otras);
+    h+=cmpRow('Facturación semanal', semRango(ult)+' vs mediana de '+otras.length+' semanas cerradas (desde May-2026)',
+        fmtM(uv), otras.length?fmtM(mS):'—', uv, mS, true);
+  }
+  el.innerHTML=h;
+}
+
+function renderCxcComp(){
+  var el=document.getElementById('cxcComp'); if(!el) return;
+  var cobs=COB.filter(function(c){ return inclAn || !isAnanai(c.cli); });
+  var sw={}; cobs.forEach(function(c){ var sm=semDeFecha(c.f); if(sm) sw[sm]=(sw[sm]||0)+(c.neto||c.mt||0); });
+  var sk=Object.keys(sw).sort(semSort);
+  if(!sk.length){ el.innerHTML='<div class="empty">Sin cobros registrados</div>'; return; }
+  var ult=sk[sk.length-1], uv=sw[ult];
+  var otras=sk.slice(0,-1).filter(function(k){return semKey(k)>=semDesdeKey();}).map(function(k){return sw[k];});
+  var mS=mediana(otras);
+  el.innerHTML=cmpRow('Cobros de la última semana', semRango(ult)+' vs mediana de '+otras.length+' semanas cerradas (desde May-2026)',
+      fmtM(uv), otras.length?fmtM(mS):'—', uv, mS, true);
+}
+
+// ════════════════════════════════════════════════════════════════
+// GASTOS (tab) — KPIs, categorías/subcategorías, fijos vs variables
+// ════════════════════════════════════════════════════════════════
+function mesesGastos(){ var o={}; GAS.forEach(function(g){ if(g.m) o[g.m]=true; }); return Object.keys(o).sort(); }
+function mediana(arr){ if(!arr.length) return 0; var a=arr.slice().sort(function(x,y){return x-y;}); var m=Math.floor(a.length/2); return a.length%2?a[m]:(a[m-1]+a[m])/2; }
+function promedio(arr){ return arr.length?arr.reduce(function(s,x){return s+x;},0)/arr.length:0; }
+function grpNom(l){ return {A:'Materia Prima',B:'Logística',C:'Operativos (fijos)',D:'Inversión (CAPEX)'}[l]||l; }
+// Delta con color: compara actual vs base
+function deltaTxt(act, base, upGood){
+  if(!base) return '<span style="color:var(--muted)">sin base</span>';
+  var d=(act-base)/base, up=d>=0;
+  var bueno = upGood ? up : !up;
+  return '<span style="color:'+(bueno?C.a3:C.d)+';font-weight:700">'+(up?'▲':'▼')+' '+Math.abs(d*100).toFixed(0)+'%</span>';
+}
+// Semana (sábado de inicio) de una fecha 'yyyy-MM-dd' -> 'dd/MM'. Mismo criterio que el backend.
+function semDeFecha(f){
+  if(!f) return '';
+  var d=new Date(f+'T00:00:00'); if(isNaN(d.getTime())) return '';
+  d.setDate(d.getDate()-((d.getDay()+1)%7));
+  return ('0'+d.getDate()).slice(-2)+'/'+('0'+(d.getMonth()+1)).slice(-2);
+}
+function mesDeFecha(f){ return f?String(f).slice(0,7):''; }
+// Fila comparativa reutilizable
+function cmpRow(titulo, sub, actTxt, baseTxt, act, base, upGood){
+  return '<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--bd)">'
+    +'<div><div style="font-size:12.5px;font-weight:700;color:var(--text)">'+titulo+'</div>'
+    +'<div style="font-size:10.5px;color:var(--muted);margin-top:2px">'+sub+'</div></div>'
+    +'<div style="text-align:right"><div style="font-size:17px;font-weight:800;color:var(--text)">'+actTxt
+    +' <span style="font-size:11px;font-weight:500;color:var(--muted)">vs '+baseTxt+'</span></div>'
+    +'<div style="font-size:11px;margin-top:2px">'+deltaTxt(act,base,upGood)+'</div></div></div>';
+}
+
+function renderGastos(){
+  var all=gasFiltered();
+  var meses=mesesGastos();
+  if(!gasMonth || meses.indexOf(gasMonth)===-1) gasMonth = meses.length?meses[meses.length-1]:'';
+  var mSel=gasMonth;
+  var g=all.filter(function(x){return x.m===mSel;});
+
+  var tot=g.reduce(function(s,x){return s+(x.mt||0);},0);
+  var vari=g.filter(function(x){return x.isVar;}).reduce(function(s,x){return s+x.mt;},0);
+  var fijo=g.filter(function(x){return x.isFijo;}).reduce(function(s,x){return s+x.mt;},0);
+  var capex=g.filter(function(x){return x.isCapex;}).reduce(function(s,x){return s+x.mt;},0);
+  document.getElementById('gasCnt').textContent=g.length+' gastos · '+(mSel?mesLabel(mSel):'—');
+  document.getElementById('gasCatSub').textContent='Mes seleccionado · '+(mSel?mesLabel(mSel):'—');
+  document.getElementById('gasStatMes').textContent=mSel?('· mes: '+mesLabel(mSel)):'';
+
+  // ── KPI: % gastos fijos sobre ventas (mensual) ──
+  var ventasMes=allDes().filter(function(r){return r.m===mSel;}).reduce(function(s,r){return s+(r.mt||0);},0);
+  document.getElementById('g-fv').textContent=ventasMes>0?((fijo/ventasMes)*100).toFixed(1)+'%':'—';
+  document.getElementById('g-fv-s').textContent=fmtM(fijo)+' fijos / '+fmtM(ventasMes)+' ventas';
+
+  // ── KPI: gasto total del mes vs mediana mensual (todos los meses) ──
+  var totMes={}; all.forEach(function(x){ if(x.m) totMes[x.m]=(totMes[x.m]||0)+x.mt; });
+  // Mediana ESTABLE: meses cerrados desde MED_DESDE. No depende del mes elegido.
+  var mBase=mesesBase(meses);
+  var base=mBase.map(function(m){return totMes[m]||0;});
+  var medAll=mediana(base);
+  document.getElementById('g-acu').textContent=fmtM(tot);
+  document.getElementById('g-acu-s').innerHTML='mediana '+baseLbl(mBase)+': '+fmtM(medAll)+' '+(base.length?deltaTxt(tot,medAll):'');
+
+  // ── KPI: variable / fijo agregado (variables reales imputados) ──
+  var opBase=vari+fijo;
+  document.getElementById('g-vf').textContent=opBase>0?(Math.round(vari/opBase*100)+' / '+Math.round(fijo/opBase*100)):'—';
+  document.getElementById('g-vf-s').textContent=fmtM(vari)+' var · '+fmtM(fijo)+' fijo'+(capex?' · CAPEX '+fmtM(capex):'');
+
+  // ── Chart: por categoría ──
+  var GRP={A:0,B:0,C:0,D:0};
+  g.forEach(function(x){ var l=String(x.grupo||'').charAt(0); if(GRP[l]!==undefined) GRP[l]+=x.mt; });
+  var gk=['A','B','C','D'];
+  if(chGasCat)chGasCat.destroy();
+  chGasCat=new Chart(document.getElementById('chGasCat'),{type:'bar',data:{labels:gk.map(grpNom),datasets:[{label:'Gasto',data:gk.map(function(k){return r1(GRP[k]);}),backgroundColor:[C.a,C.a2,C.o,C.p],borderRadius:5,borderWidth:0}]},
+    options:{...BO,plugins:{...BO.plugins,legend:{display:false},tooltip:{...BO.plugins.tooltip,callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.y);}}}}}});
+
+  // ── Chart: por subcategoría ──
+  var sub={}; g.forEach(function(x){ if(x.sub&&x.mt) sub[x.sub]=(sub[x.sub]||0)+x.mt; });
+  var sk=Object.keys(sub).sort(function(a,b){return sub[b]-sub[a];});
+  if(chGasSub)chGasSub.destroy();
+  chGasSub=new Chart(document.getElementById('chGasSub'),{type:'bar',data:{labels:sk,datasets:[{label:'Gasto',data:sk.map(function(k){return r1(sub[k]);}),backgroundColor:PAL,borderRadius:4,borderWidth:0}]},
+    options:{...BO,indexAxis:'y',plugins:{...BO.plugins,legend:{display:false},tooltip:{...BO.plugins.tooltip,callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.x);}}}},
+      scales:{x:{...BO.scales.x,ticks:{...BO.scales.x.ticks,callback:function(v){return fmtM(v);}}},y:{ticks:{color:C.lb,font:{size:9.5}},grid:{display:false}}}}});
+
+  // ── Chart: fijos vs variables por mes (todos los meses) ──
+  var mv={},mf={},mcp={};
+  all.forEach(function(x){ if(!x.m) return;
+    if(x.isVar) mv[x.m]=(mv[x.m]||0)+x.mt;
+    else if(x.isFijo) mf[x.m]=(mf[x.m]||0)+x.mt;
+    else if(x.isCapex) mcp[x.m]=(mcp[x.m]||0)+x.mt; });
+  if(chGasFV)chGasFV.destroy();
+  chGasFV=new Chart(document.getElementById('chGasFV'),{type:'bar',data:{labels:meses.map(mesLabel),datasets:[
+    {label:'Variables (MP + logística)',data:meses.map(function(m){return r1(mv[m]||0);}),backgroundColor:C.a,borderWidth:0,stack:'x'},
+    {label:'Fijos operativos',data:meses.map(function(m){return r1(mf[m]||0);}),backgroundColor:C.o,borderWidth:0,stack:'x'},
+    {label:'CAPEX',data:meses.map(function(m){return r1(mcp[m]||0);}),backgroundColor:C.p,borderWidth:0,stack:'x'}
+  ]},options:{...BO,scales:{x:BO.scales.x,y:{...BO.scales.y,stacked:true}}}});
+
+  // ── Tabla: promedio / mediana mensual vs acumulado del mes ──
+  var subs={};
+  all.forEach(function(x){ if(!x.sub||!x.m) return; if(!subs[x.sub]) subs[x.sub]={}; subs[x.sub][x.m]=(subs[x.sub][x.m]||0)+x.mt; });
+  var filas=Object.keys(subs).sort();
+  var hh='<thead><tr><th style="text-align:left">Subcategoría</th><th>Mediana mensual ('+baseLbl(mBase)+')</th><th>'+(mSel?mesLabel(mSel):'—')+'</th><th>vs mediana</th></tr></thead><tbody>';
+  filas.forEach(function(k){
+    var vals=mBase.map(function(m){return subs[k][m]||0;});
+    var md=mediana(vals), act=subs[k][mSel]||0;
+    hh+='<tr><td>'+k+'</td><td>'+fmt(md)+'</td>'
+      +'<td style="font-weight:700;color:var(--text)">'+fmt(act)+'</td>'
+      +'<td>'+(vals.length?deltaTxt(act,md):'<span style="color:var(--muted)">—</span>')+'</td></tr>';
+  });
+  var tv=mBase.map(function(m){return totMes[m]||0;});
+  hh+='<tr style="border-top:2px solid var(--bd)"><td style="font-weight:800">TOTAL</td>'
+    +'<td style="font-weight:700">'+fmt(mediana(tv))+'</td>'
+    +'<td style="font-weight:800;color:var(--text)">'+fmt(tot)+'</td><td>'+(tv.length?deltaTxt(tot,mediana(tv)):'—')+'</td></tr>';
+  hh+='</tbody>';
+  document.getElementById('gasStatTbl').innerHTML=hh;
+}
+
+// ════════════════════════════════════════════════════════════════
+// CXC POR CLIENTE — saldo histórico completo, vista filtrada por período
+// ════════════════════════════════════════════════════════════════
+function renderCXC(){
+  // CXC = saldo histórico completo (toda la historia)
+  var allD=allDes(); var allC=allCob();
+  var factu={}, cobrado={};
+  var factuCred={}, factuCont={};
+  allD.forEach(function(r){
+    if(!r.mt) return;
+    factu[r.cli]=(factu[r.cli]||0)+r.mt;
+    if(r.cond==='Crédito') factuCred[r.cli]=(factuCred[r.cli]||0)+r.mt;
+    else factuCont[r.cli]=(factuCont[r.cli]||0)+r.mt;
+  });
+  allC.forEach(function(r){var ne=r.neto||r.mt||0;if(ne)cobrado[r.cli]=(cobrado[r.cli]||0)+ne;});
+
+  // All unique clients that ever had a credit dispatch (regardless of date filter)
+  var allClis=Array.from(new Set(allD.filter(function(r){return r.mt;}).map(function(r){return r.cli;}))).sort();
+
+  // Build full table — ALL clients, show $0 saldo if fully paid
+  var rows=[];
+  allClis.forEach(function(cli){
+    var fc=factu[cli]||0; var co=cobrado[cli]||0;
+    var fcred=factuCred[cli]||0; var fcont=factuCont[cli]||0;
+    // Base del saldo según el toggle: 'total' (contado+crédito) o 'credito' (solo crédito)
+    var base = fc;  // neteo puro: facturación total del cliente − cobrado
+    var sx = Math.max(0, Math.round(base-co));
+    rows.push({cli:cli,fc:fc,co:co,sx:sx,fcred:fcred,fcont:fcont});
+  });
+  rows.sort(function(a,b){return b.sx-a.sx;});
+
+  // Only count positive saldos for totals
+  var totCXC=rows.reduce(function(s,r){return s+(r.sx||0);},0);
+  var conDeuda=rows.filter(function(r){return r.sx>0;}).length;
+  var maxV=rows.length&&rows[0].sx>0?rows[0].sx:1;
+
+  // Oldest unpaid despacho per client
+  var oldest={};
+  allD.filter(function(r){return r.mt&&r.f;}).forEach(function(r){
+    if(!oldest[r.cli]||r.f<oldest[r.cli])oldest[r.cli]=r.f;});
+
+  document.getElementById('c-tot').textContent=fmtM(totCXC);
+  document.getElementById('c-n').textContent  =conDeuda;
+  document.getElementById('cxcCnt').textContent=allClis.length+' clientes';
+  renderCxcComp();
+
+  if(rows.length&&rows[0].sx>0){
+    document.getElementById('c-top').textContent  =fmtM(rows[0].sx);
+    document.getElementById('c-top-s').textContent=rows[0].cli;
+  }
+  var oldestCli=rows.filter(function(r){return r.sx>0;}).reduce(function(mx,r){return (dAgo(oldest[r.cli])||0)>(dAgo(oldest[mx.cli])||0)?r:mx;},{cli:'',sx:0});
+  if(oldestCli.cli){
+    document.getElementById('c-old').textContent  =(dAgo(oldest[oldestCli.cli])||0)+'d';
+    document.getElementById('c-old-s').textContent=oldestCli.cli;
+  }
+
+  // Table — ALL clients, % calculado sobre totCXC
+  var saldoLbl = 'Saldo CXC';
+  var h='<table><thead><tr>'
+    +'<th style="text-align:left">Cliente</th>'
+    +'<th>Facturación total</th><th>Cobrado</th>'
+    +'<th>'+saldoLbl+'</th><th>% del total CXC</th><th>Barra</th>'
+    +'</tr></thead><tbody>';
+
+  rows.forEach(function(r){
+    // % del total = saldo del cliente / CXC total (solo si hay CXC)
+    var pct = totCXC>0 && r.sx>0 ? (r.sx/totCXC*100).toFixed(1)+'%' : (r.sx===0?'✓ Saldo 0':'—');
+    var w   = maxV>0 ? Math.round(r.sx/maxV*100) : 0;
+    var saldoColor = r.sx>0 ? 'color:var(--danger);font-weight:700' : 'color:var(--accent3);font-weight:700';
+    h+='<tr class="clickable" onclick="showDet(\''+r.cli.replace(/'/g,"\\'")+'\')">'
+      +'<td>'+r.cli+'</td>'
+      +'<td style="color:var(--muted)">'+fmt(r.fc)+'</td>'
+      +'<td style="color:var(--accent3)">'+fmt(r.co)+'</td>'
+      +'<td style="'+saldoColor+'">'+fmt(r.sx)+'</td>'
+      +'<td style="color:var(--muted)">'+pct+'</td>'
+      +'<td><div style="height:8px;width:'+w+'px;max-width:100px;background:var(--danger);opacity:.6;border-radius:4px"></div></td>'
+      +'</tr>';
+  });
+  if(!rows.length)h+='<tr><td colspan="6" class="empty">Sin clientes con crédito</td></tr>';
+  h+='</tbody><tfoot><tr>'
+    +'<td><b>TOTAL</b></td>'
+    +'<td style="color:var(--muted)">'+fmt(rows.reduce(function(s,r){return s+r.fc;},0))+'</td>'
+    +'<td style="color:var(--accent3)">'+fmt(rows.reduce(function(s,r){return s+r.co;},0))+'</td>'
+    +'<td style="color:var(--danger);font-weight:700">'+fmt(totCXC)+'</td>'
+    +'<td>100%</td><td></td>'
+    +'</tr></tfoot></table>';
+  document.getElementById('cxcTbl').innerHTML=h;
+  document.getElementById('detWrap').style.display='none';
+}
+
+function showDet(cli){
+  // Show ALL dispatches (contado + crédito) for this client within the date filter
+  var d=desFor('cxc').filter(function(r){return r.cli===cli&&r.mt;});
+  d.sort(function(a,b){return a.f<b.f?-1:1;});
+  var tot=d.reduce(function(s,r){return s+r.mt;},0);
+  document.getElementById('detTitle').textContent='Todos los despachos — '+cli;
+  document.getElementById('detSub').textContent=d.length+' despachos en el período (contado + crédito) · Total: '+fmt(tot)+' · El saldo CXC se calcula sobre el historial completo';
+  var h='<thead><tr><th style="text-align:left">DES-ID</th><th>Fecha</th><th>Producto</th><th>Unidades</th><th>Monto</th><th>Condición</th><th>Días</th></tr></thead><tbody>';
+  d.forEach(function(r){var dg=dAgo(r.f)||0;
+    h+='<tr><td>'+r.id+'</td><td>'+r.fl+'</td><td>'+r.p+(r.v?' ('+r.v+')':'')+'</td>'
+      +'<td>'+n(r.u)+'</td><td style="font-weight:700">'+fmt(r.mt)+'</td>'
+      +'<td><span class="pill '+(r.cond==='Contado'?'pe':'pi')+'">'+r.cond+'</span></td>'
+      +'<td style="color:'+(dg>30?'var(--danger)':'var(--accent2)')+'">'+dg+'d</td></tr>';});
+  h+='</tbody>';
+  document.getElementById('detTbl').innerHTML=h;
+  document.getElementById('detWrap').style.display='block';
+  document.getElementById('detWrap').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+// ════════════════════════════════════════════════════════════════
+// ESTADÍSTICAS
+// ════════════════════════════════════════════════════════════════
+function statsD(){
+  var d=desFor('st');
+  if(sProd)d=d.filter(function(r){return r.p===sProd;});
+  return d;
+}
+function renderStats(){
+  var d=statsD(); var vals=d.filter(function(r){return r.mt;});
+  var tot=vals.reduce(function(s,r){return s+r.mt;},0);
+  var tk=vals.length?tot/vals.length:0;
+  var mCnt={}; d.forEach(function(r){if(r.m)mCnt[r.m]=(mCnt[r.m]||0)+1;});
+  var mc=Object.values(mCnt); var pm=mc.length?mc.reduce(function(a,b){return a+b;},0)/mc.length:0;
+  var pm2={}; vals.forEach(function(r){pm2[r.p]=(pm2[r.p]||0)+r.mt;});
+  var tp=Object.keys(pm2).sort(function(a,b){return pm2[b]-pm2[a];})[0]||'—';
+  var cm={}; vals.forEach(function(r){cm[r.cli]=(cm[r.cli]||0)+r.mt;});
+  var tc=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];})[0]||'—';
+
+  document.getElementById('s-tk').textContent  =fmtM(tk);
+  document.getElementById('s-dm').textContent  =Math.round(pm);
+  document.getElementById('s-pt').textContent  =tp.split(' ')[0];
+  document.getElementById('s-pt-s').textContent=fmtM(pm2[tp]||0);
+  document.getElementById('s-ct').textContent  =tc.split(' ')[0];
+  document.getElementById('s-ct-s').textContent=fmtM(cm[tc]||0);
+  document.getElementById('sct').textContent   =d.length+' despachos';
+  renderStatsComp();
+  document.getElementById('stSub').textContent ='Selección activa · '+vals.length+' valorizados';
+
+  var sm={}; vals.forEach(function(r){if(r.sem)sm[r.sem]=(sm[r.sem]||0)+r.mt;});
+  var sems=Object.keys(sm).sort(semSort);
+  if(chTend)chTend.destroy();
+  chTend=new Chart(document.getElementById('chTend'),{type:'line',data:{labels:sems.map(semRango),datasets:[{label:'Facturación',data:sems.map(function(s){return r1(sm[s]);}),borderColor:C.a,backgroundColor:'rgba(79,142,247,.08)',borderWidth:2,pointRadius:4,pointBackgroundColor:C.a,fill:true,tension:.3}]},
+    options:{...BO,plugins:{...BO.plugins,legend:{display:false},tooltip:{...BO.plugins.tooltip,callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.y);}}}}}});
+
+  var clis=Object.keys(cm).sort(function(a,b){return cm[b]-cm[a];}).slice(0,8);
+  if(chCli)chCli.destroy();
+  chCli=new Chart(document.getElementById('chCli'),{type:'bar',data:{labels:clis,datasets:[{label:'Facturación',data:clis.map(function(c){return r1(cm[c]);}),backgroundColor:PAL,borderRadius:4,borderWidth:0}]},
+    options:{...BO,indexAxis:'y',plugins:{...BO.plugins,legend:{display:false},tooltip:{...BO.plugins.tooltip,callbacks:{label:function(ctx){return ' '+fmt(ctx.parsed.x);}}}},
+      scales:{x:{...BO.scales.x,ticks:{...BO.scales.x.ticks,callback:function(v){return fmtM(v);}}},y:{ticks:{color:C.lb,font:{size:10}},grid:{display:false}}}}});
+
+  var prodRows=Object.keys(pm2).sort(function(a,b){return pm2[b]-pm2[a];});
+  var h='<thead><tr><th style="text-align:left">Producto</th><th>Facturación</th><th>% del total</th><th>Despachos</th><th>Ticket prom.</th></tr></thead><tbody>';
+  prodRows.forEach(function(p){var cnt=vals.filter(function(r){return r.p===p;}).length;
+    h+='<tr><td>'+p+'</td><td style="font-weight:700">'+fmt(pm2[p])+'</td>'
+      +'<td style="color:var(--muted)">'+(tot?(pm2[p]/tot*100).toFixed(1):0)+'%</td>'
+      +'<td>'+cnt+'</td><td>'+fmt(cnt?pm2[p]/cnt:0)+'</td></tr>';});
+  h+='</tbody>';
+  document.getElementById('stTbl').innerHTML=h;
+}
+
+// ════════════════════════════════════════════════════════════════
+// TABLA
+// ════════════════════════════════════════════════════════════════
+function tablaD(){
+  return desFor('tb').filter(function(r){
+    if(tCli&&r.cli!==tCli)return false;
+    if(tProd&&r.p!==tProd)return false;
+    if(tEst!=='all'&&r.est!==tEst)return false;
+    return true;
+  });
+}
+function renderTabla(){
+  var d=tablaD(); var tot=d.reduce(function(s,r){return s+(r.mt||0);},0);
+  document.getElementById('tct').textContent=d.length+' registros';
+  var h='<thead><tr>'
+    +'<th style="text-align:left">DES-ID</th><th>Fecha</th><th>Cliente</th>'
+    +'<th>Producto</th><th>Variante</th><th>Unidades</th>'
+    +'<th>Precio</th><th>Monto</th><th>Condición</th><th>Canal</th>'
+    +'</tr></thead><tbody>';
+  d.slice(0,500).forEach(function(r){
+    h+='<tr><td>'+r.id+'</td><td>'+r.fl+'</td><td>'+r.cli+'</td><td>'+r.p+'</td>'
+      +'<td style="color:var(--muted);font-size:11px">'+(r.v||'—')+'</td>'
+      +'<td>'+(r.u!=null?n(r.u):'—')+'</td>'
+      +'<td>'+(r.pr!=null?fmt(r.pr):'—')+'</td>'
+      +'<td style="font-weight:700">'+(r.mt!=null?fmt(r.mt):'Sin precio')+'</td>'
+      +'<td>'+r.cond+'</td>'
+      +'<td><span class="pill '+(isAnanai(r.cli)?'pi':'pe')+'">'+(isAnanai(r.cli)?'Interno':'Externo')+'</span></td>'
+      +'</tr>';
+  });
+  if(!d.length)h+='<tr><td colspan="10" class="empty">Sin registros</td></tr>';
+  h+='</tbody><tfoot><tr><td colspan="7"><b>TOTAL</b></td><td style="font-weight:700">'+fmt(tot)+'</td><td colspan="2"></td></tr></tfoot>';
+  document.getElementById('mainTbl').innerHTML=h;
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+(function init(){
+  var prods=Array.from(new Set(DES.map(function(r){return r.p;}))).filter(Boolean).sort();
+  var clis =Array.from(new Set(DES.map(function(r){return r.cli;}))).filter(Boolean).sort();
+
+  prods.forEach(function(p){var o=document.createElement('option');o.value=p;o.textContent=p;document.getElementById('spf').appendChild(o);});
+  clis.forEach(function(c){
+    var o1=document.createElement('option');o1.value=c;o1.textContent=c;document.getElementById('tcl').appendChild(o1);
+  });
+  prods.forEach(function(p){var o=document.createElement('option');o.value=p;o.textContent=p;document.getElementById('tpr').appendChild(o);});
+
+  // Tab clicks
+  document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){goTab(this.dataset.tab);});});
+
+  // EERR vista toggle
+  document.querySelectorAll('#eerrVista .bb').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      document.querySelectorAll('#eerrVista .bb').forEach(function(b){b.classList.remove('on');});
+      this.classList.add('on');
+      eerrVista = this.dataset.v;
+      if(eerrVista==='sem') eerrMesSel=null;
+      renderEERR();
+    });
+  });
+
+  // EERR date pickers
+  document.getElementById('eerrDesde').addEventListener('change',renderEERR);
+  document.getElementById('eerrHasta').addEventListener('change',renderEERR);
+
+  // EERR reset
+  document.getElementById('rstEerr').addEventListener('click',function(){
+    eerrVista='sem'; eerrMesSel=null;
+    document.getElementById('eerrDesde').value=META.fecha_desde;
+    document.getElementById('eerrHasta').value=META.fecha_hasta;
+    document.querySelectorAll('#eerrVista .bb').forEach(function(b,i){b.classList.toggle('on',i===0);});
+    renderEERR();
+  });
+
+  // Filter inputs
+  document.getElementById('spf').addEventListener('change',function(){sProd=this.value;renderStats();});
+  document.getElementById('tcl').addEventListener('change',function(){tCli=this.value;renderTabla();});
+  document.getElementById('tpr').addEventListener('change',function(){tProd=this.value;renderTabla();});
+  document.getElementById('test').addEventListener('change',function(){tEst=this.value;renderTabla();});
+
+  // Reset buttons
+  document.getElementById('rstFin').addEventListener('click',function(){
+    DATES.fin={desde:MIN_DATE,hasta:MAX_DATE};
+    document.getElementById('finDesde').value=MIN_DATE;
+    document.getElementById('finHasta').value=MAX_DATE;
+    var _fm=document.getElementById('finMes'); if(_fm)_fm.value='';
+    renderFin();
+  });
+  document.getElementById('rstCxc').addEventListener('click',function(){
+    DATES.cxc={desde:MIN_DATE,hasta:MAX_DATE};
+    document.getElementById('cxcDesde').value=MIN_DATE;
+    document.getElementById('cxcHasta').value=MAX_DATE;
+    renderCXC();
+  });
+  document.getElementById('rsts').addEventListener('click',function(){
+    DATES.st={desde:MIN_DATE,hasta:MAX_DATE};
+    document.getElementById('stDesde').value=MIN_DATE;
+    document.getElementById('stHasta').value=MAX_DATE;
+    sProd=''; document.getElementById('spf').value='';
+    renderStats();
+  });
+  document.getElementById('rstt').addEventListener('click',function(){
+    DATES.tb={desde:MIN_DATE,hasta:MAX_DATE};
+    document.getElementById('tbDesde').value=MIN_DATE;
+    document.getElementById('tbHasta').value=MAX_DATE;
+    tCli='';tProd='';tEst='all';
+    document.getElementById('tcl').value='';
+    document.getElementById('tpr').value='';
+    document.getElementById('test').value='all';
+    renderTabla();
+  });
+
+  initDateInputs();
+  poblarMeses();
+  document.getElementById('eerrDesde').min=META.fecha_desde;
+  document.getElementById('eerrDesde').max=META.fecha_hasta;
+  document.getElementById('eerrDesde').value=META.fecha_desde;
+  document.getElementById('eerrHasta').min=META.fecha_desde;
+  document.getElementById('eerrHasta').max=META.fecha_hasta;
+  document.getElementById('eerrHasta').value=META.fecha_hasta;
+  renderFin();
+})();
+
+// ════════════════════════════════════════════════════════════════
+// EERR — Estado de Resultados (top-level: accesible desde goTab)
+// ════════════════════════════════════════════════════════════════
+var eerrVista = 'sem';
+var eerrMesSel = null;
+var eerrDesAct = [];
+var eerrDesde2 = '';
+var eerrHasta2 = '';
+var chMvM;
+
+// ── getCVU: match product+variante to configured CMV ─────────────
+// Resuelve el tier (alto/bajo) de Tartines/Pizzas a partir del sabor de la variante
+function _tierSabor(v){
+  if(v.indexOf('alto')>-1) return 'alto';
+  if(v.indexOf('bajo')>-1) return 'bajo';
+  var altos=['jyq','jamon','pollo','atun','verdura','roquefort','especial','cuatropoder'];
+  var bajos=['capresse','espinaca','cebolla','pesto','napoleon','jota','fugaz'];
+  for(var i=0;i<altos.length;i++){ if(v.indexOf(altos[i])>-1) return 'alto'; }
+  for(var j=0;j<bajos.length;j++){ if(v.indexOf(bajos[j])>-1) return 'bajo'; }
+  return null;
+}
+// Grado de match de producto: 2=exacto, 1=raíz contenida (Chipalmendras, Medialunas), 0=nada
+function _prodMatch(p,cp){
+  if(p===cp) return 2;
+  if(cp.length>=5 && p.indexOf(cp)===0) return 1;
+  if(p.length>=5 && cp.indexOf(p)===0) return 1;
+  return 0;
+}
+// getCVU: ata cada venta a su CVU configurado. Tartines/Pizzas resuelven tier por sabor.
+// Devuelve null si el producto NO tiene CVU configurado -> esa venta se excluye del CMV.
+function getCVU(prod, vari) {
+  var p = normStr(prod), v = normStr(vari||'');
+  var esTier = (p.indexOf('tartin')>-1 || p.indexOf('pizza')>-1);
+  var tier = esTier ? _tierSabor(v) : null;
+  var best = null, bestScore = -1;
+  for (var i=0; i<CMV.length; i++) {
+    var c = CMV[i];
+    var cp = normStr(c.prod);
+    var cv = c.var ? normStr(c.var) : null;
+    var ps = _prodMatch(p, cp);
+    if (!ps) continue;
+    if (esTier) {
+      if (cv && tier && cv === tier && ps > bestScore) { best = c.cvu; bestScore = ps; }
+    } else {
+      if (!cv && ps > bestScore) { best = c.cvu; bestScore = ps; }
+    }
+  }
+  return best;
+}
+
+// ── Build EERR data for a set of despachos and gastos ────────────
+function calcEERR(desFilt, gasFilt) {
+  // Facturación
+  var fact = desFilt.reduce(function(s,r){return s+(r.mt||0);},0);
+
+  // CMV
+  var cmv = 0;
+  desFilt.forEach(function(r){
+    var cvu = getCVU(r.p, r.v);
+    if (cvu && r.u) cmv += cvu * r.u;
+  });
+
+  var mc = fact - cmv;
+  var mcPct = fact > 0 ? mc/fact : 0;
+
+  // Gastos por categoría
+  // OJO metodológico: la materia prima (grupo A) NO se resta acá porque ya está
+  // dentro del CMV estándar (CVU x unidades vendidas). Restarla otra vez sería
+  // contar el mismo costo dos veces. Queda como memo informativo (gasMP).
+  var gasVar = gasFilt.filter(function(g){return g.isVar && String(g.grupo||'').charAt(0)==='B';}).reduce(function(s,g){return s+g.mt;},0);
+  var gasMP  = gasFilt.filter(function(g){return String(g.grupo||'').charAt(0)==='A';}).reduce(function(s,g){return s+g.mt;},0);
+  var gasFij = gasFilt.filter(function(g){return g.isFijo;}).reduce(function(s,g){return s+g.mt;},0);
+  var gasCap = gasFilt.filter(function(g){return g.isCapex;}).reduce(function(s,g){return s+g.mt;},0);
+
+  // Sub-categorías de gastos variables
+  var gasA1 = gasFilt.filter(function(g){return g.sub==='A1. Proveedor consolidado';}).reduce(function(s,g){return s+g.mt;},0);
+  var gasA2 = gasFilt.filter(function(g){return g.sub==='A2. Compra individual de insumo';}).reduce(function(s,g){return s+g.mt;},0);
+  var gasA3 = gasFilt.filter(function(g){return g.sub==='A3. Insumos de producción';}).reduce(function(s,g){return s+g.mt;},0);
+  var gasB1 = gasFilt.filter(function(g){return g.sub==='B1. Envíos y distribución';}).reduce(function(s,g){return s+g.mt;},0);
+
+  // Sub-categorías fijos
+  var gasC1 = gasFilt.filter(function(g){return g.sub==='C1. Servicios y mantenimiento';}).reduce(function(s,g){return s+g.mt;},0);
+  var gasC2 = gasFilt.filter(function(g){return g.sub==='C2. Mano de obra operativa';}).reduce(function(s,g){return s+g.mt;},0);
+  var gasC3 = gasFilt.filter(function(g){return g.sub==='C3. Honorarios profesionales';}).reduce(function(s,g){return s+g.mt;},0);
+
+  var margOp = mc - gasVar;
+  var ebitda = margOp - gasFij;
+  var resultado = ebitda - gasCap;
+
+  return {
+    fact:fact, cmv:cmv, mc:mc, mcPct:mcPct,
+    gasVar:gasVar, gasMP:gasMP, gasA1:gasA1, gasA2:gasA2, gasA3:gasA3, gasB1:gasB1,
+    margOp:margOp,
+    gasFij:gasFij, gasC1:gasC1, gasC2:gasC2, gasC3:gasC3,
+    ebitda:ebitda, gasCap:gasCap, resultado:resultado
+  };
+}
+
+// ── Filter helpers ────────────────────────────────────────────────
+function desFiltered() { return DES.filter(function(r){ return inclAn || !isAnanai(r.cli); }); }
+function gasFiltered() { return GAS.filter(function(g){return inclAn||!isAnanai(g.prov);}); }
+
+function gasInRange(key) {
+  var d = DATES[key] || {}; var desde = d.desde||''; var hasta = d.hasta||'';
+  return gasFiltered().filter(function(g){ return g.f >= desde && g.f <= hasta; });
+}
+
+// ── Render EERR main ─────────────────────────────────────────────
+function renderEERR() {
+  if (eerrVista === 'sem')   renderEERR_Sem();
+  if (eerrVista === 'libre') renderEERR_Libre();
+  if (eerrVista === 'mvm')   renderEERR_MvM();
+  renderMargenes(eerrDesAct);
+}
+
+// ── Vista 1: semanal por mes ─────────────────────────────────────
+function renderEERR_Sem() {
+  // Build dynamic month buttons from data
+  var meses = Array.from(new Set(
+    DES.map(function(r){return r.m;}).concat(GAS.map(function(g){return g.m;}))
+  )).filter(Boolean).sort();
+
+  var btnWrap = document.getElementById('eerrMesBtns');
+  btnWrap.innerHTML = '';
+  meses.forEach(function(m) {
+    var lbl = m.replace('2026-',''); // show "05", "06"...
+    // convert to month name
+    var mNames = ['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    var mn = parseInt(m.split('-')[1])||0;
+    lbl = mNames[mn] + ' ' + m.split('-')[0];
+    var btn = document.createElement('button');
+    btn.className = 'bb' + (m === eerrMesSel ? ' on' : '');
+    btn.textContent = lbl;
+    btn.dataset.mes = m;
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('#eerrMesBtns .bb').forEach(function(b){b.classList.remove('on');});
+      this.classList.add('on');
+      eerrMesSel = this.dataset.mes;
+      renderEERR_Sem();
+    });
+    btnWrap.appendChild(btn);
+  });
+
+  if (!eerrMesSel && meses.length) eerrMesSel = meses[meses.length-1];
+  document.getElementById('eerrRangoWrap').style.display = 'none';
+  document.getElementById('eerrMvMWrap').style.display = 'none';
+
+  // Get weeks in selected month
+  var desMes = desFiltered().filter(function(r){return r.m === eerrMesSel;});
+  eerrDesAct = desMes;
+  var gasMes = gasFiltered().filter(function(g){return g.m === eerrMesSel;});
+  var sems = Array.from(new Set(desMes.map(function(r){return r.sem;})
+    .concat(gasMes.map(function(g){return g.sem;})))).filter(Boolean).sort(semSort);
+
+  // Build columns: one per week + acumulado
+  var cols = sems.map(function(s){
+    var dF = desMes.filter(function(r){return r.sem===s;});
+    var gF = gasMes.filter(function(g){return g.sem===s;});
+    return {label:semRango(s), data: calcEERR(dF,gF)};
+  });
+  cols.push({label:'Acumulado ' + eerrMesSel.replace('-',' / '), data: calcEERR(desMes, gasMes)});
+
+  document.getElementById('eerrCardTitle').textContent = 'Estado de Resultados — ' + eerrMesSel;
+  document.getElementById('eerrCnt').textContent = sems.length + ' semanas';
+
+  buildEERRTable(cols, false);
+  updateEERRKPIs(cols[cols.length-1].data);
+}
+
+// ── Vista 2: rango libre ─────────────────────────────────────────
+function renderEERR_Libre() {
+  document.getElementById('eerrMesBtns').innerHTML = '';
+  document.getElementById('eerrRangoWrap').style.display = 'flex';
+  document.getElementById('eerrMvMWrap').style.display = 'none';
+
+  var desde = document.getElementById('eerrDesde').value || META.fecha_desde;
+  var hasta = document.getElementById('eerrHasta').value || META.fecha_hasta;
+
+  var desF = desFiltered().filter(function(r){return r.f>=desde&&r.f<=hasta;});
+  eerrDesAct = desF;
+  var gasF = gasFiltered().filter(function(g){return g.f>=desde&&g.f<=hasta;});
+  var sems = Array.from(new Set(desF.map(function(r){return r.sem;})
+    .concat(gasF.map(function(g){return g.sem;})))).filter(Boolean).sort(semSort);
+
+  var cols = sems.map(function(s){
+    return {label:semRango(s), data: calcEERR(
+      desF.filter(function(r){return r.sem===s;}),
+      gasF.filter(function(g){return g.sem===s;})
+    )};
+  });
+  if (cols.length) cols.push({label:'Acumulado', data: calcEERR(desF,gasF)});
+
+  document.getElementById('eerrCardTitle').textContent = 'EERR — Rango libre';
+  document.getElementById('eerrCnt').textContent = desF.length + ' despachos · ' + gasF.length + ' gastos';
+
+  buildEERRTable(cols, false);
+  if (cols.length) updateEERRKPIs(cols[cols.length-1].data);
+}
+
+// ── Vista 3: mes vs mes ──────────────────────────────────────────
+function renderEERR_MvM() {
+  document.getElementById('eerrMesBtns').innerHTML = '';
+  document.getElementById('eerrRangoWrap').style.display = 'none';
+  document.getElementById('eerrMvMWrap').style.display = 'block';
+  eerrDesAct = desFiltered();
+
+  var meses = Array.from(new Set(
+    DES.map(function(r){return r.m;}).concat(GAS.map(function(g){return g.m;}))
+  )).filter(Boolean).sort();
+
+  var cols = meses.map(function(m){
+    var mNames=['','Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+    var mn = parseInt(m.split('-')[1])||0;
+    return {
+      label: mNames[mn]+'\'' + m.split('-')[0].slice(2),
+      data: calcEERR(
+        desFiltered().filter(function(r){return r.m===m;}),
+        gasFiltered().filter(function(g){return g.m===m;})
+      )
+    };
+  });
+
+  document.getElementById('eerrCardTitle').textContent = 'EERR — Mes vs Mes';
+  document.getElementById('eerrCnt').textContent = meses.length + ' meses';
+
+  buildEERRTable(cols, true);
+  if (cols.length) updateEERRKPIs(cols[cols.length-1].data);
+
+  // Chart
+  if (chMvM) chMvM.destroy();
+  chMvM = new Chart(document.getElementById('chMvM'),{type:'bar',
+    data:{labels:cols.map(function(c){return c.label;}),datasets:[
+      {label:'Facturación',data:cols.map(function(c){return r1(c.data.fact);}),backgroundColor:'rgba(79,142,247,.75)',borderRadius:4,borderWidth:0},
+      {label:'CMV+Gastos',data:cols.map(function(c){return r1(c.data.cmv+c.data.gasVar+c.data.gasFij);}),backgroundColor:'rgba(247,111,111,.65)',borderRadius:4,borderWidth:0},
+      {label:'EBITDA',data:cols.map(function(c){return r1(c.data.ebitda);}),backgroundColor:'rgba(79,217,160,.75)',borderRadius:4,borderWidth:0},
+    ]},
+    options:{...BO,plugins:{...BO.plugins,legend:{labels:{color:C.lb,font:{family:'Inter',size:11},boxWidth:10,padding:10}}},
+      scales:{x:BO.scales.x,y:{...BO.scales.y,stacked:false}}}
+  });
+}
+
+// ── Márgenes por producto: (P − CV) / P ──────────────────────────
+function renderMargenes(desSet){
+  var el = document.getElementById('eerrMargTbl');
+  if(!el) return;
+  desSet = desSet || [];
+  var byP = {};
+  desSet.forEach(function(r){
+    if(!r.p || !r.u || !r.mt) return;
+    var cvu = getCVU(r.p, r.v);
+    if(!byP[r.p]) byP[r.p] = {u:0, mt:0, cvuSum:0, cvuU:0};
+    var o = byP[r.p]; o.u += r.u; o.mt += r.mt;
+    if(cvu){ o.cvuSum += cvu * r.u; o.cvuU += r.u; }
+  });
+  var rows = Object.keys(byP).sort(function(a,b){ return byP[b].mt - byP[a].mt; });
+  if(!rows.length){ el.innerHTML = '<tbody><tr><td colspan="4" class="empty">Sin datos para el período</td></tr></tbody>'; return; }
+  var h = '<thead><tr><th style="text-align:left">Producto</th><th>Precio prom.</th><th>CVU config.</th><th>Margen (P\u2212CV)/P</th></tr></thead><tbody>';
+  rows.forEach(function(p){
+    var o = byP[p];
+    var precioProm = o.u ? o.mt/o.u : 0;
+    if(!o.cvuU){
+      h += '<tr><td>'+p+'</td><td>'+fmt(precioProm)+'</td>'
+         + '<td style="color:var(--muted)">sin config</td>'
+         + '<td style="color:var(--muted)">\u2014</td></tr>';
+      return;
+    }
+    var cvuProm = o.cvuSum/o.cvuU;
+    var marg = precioProm>0 ? (precioProm-cvuProm)/precioProm : 0;
+    var cls = marg>=0.4 ? 'eerr-pos' : (marg>=0.2 ? '' : 'eerr-neg');
+    h += '<tr><td>'+p+'</td><td>'+fmt(precioProm)+'</td><td>'+fmt(cvuProm)+'</td>'
+       + '<td class="'+cls+'" style="font-weight:700">'+(marg*100).toFixed(1)+'%</td></tr>';
+  });
+  h += '</tbody>';
+  el.innerHTML = h;
+}
+
+// ── Build EERR Table ─────────────────────────────────────────────
+function buildEERRTable(cols, isMvM) {
+  if (!cols.length) {
+    document.getElementById('eerrTbl').innerHTML =
+      '<tbody><tr><td colspan="2" class="empty">Sin datos para el período seleccionado</td></tr></tbody>';
+    return;
+  }
+  var nc = cols.length;
+
+  function hdCol(lbl) { return '<td>'+lbl+'</td>'; }
+  function cell(v, cls) {
+    var s = v == null ? '—' : fmtM(v);
+    return '<td class="'+(cls||'')+'">' + s + '</td>';
+  }
+  function pctCell(v) {
+    var s = v == null ? '—' : (v*100).toFixed(1)+'%';
+    var cls = v == null ? '' : (v >= 0.5 ? 'eerr-pos' : v >= 0.3 ? 'eerr-neutral' : 'eerr-neg');
+    return '<td class="'+cls+'">'+s+'</td>';
+  }
+  function row(label, key, cls, pct) {
+    var tr = '<tr class="eerr-row '+(cls||'')+'">'
+      + '<td>'+label+'</td>'
+      + cols.map(function(c){
+          var v = c.data[key];
+          if (pct) return pctCell(v);
+          var rowCls = (v == null) ? '' : (v >= 0 ? 'eerr-pos' : 'eerr-neg');
+          return cell(v, rowCls);
+        }).join('')
+      + '</tr>';
+    return tr;
+  }
+  function secRow(lbl) {
+    return '<tr class="eerr-section"><td colspan="'+(nc+1)+'">'+lbl+'</td></tr>';
+  }
+  function totRow(lbl, key, cls) {
+    return '<tr class="eerr-total">'
+      +'<td>'+lbl+'</td>'
+      + cols.map(function(c){
+          var v = c.data[key];
+          var rowCls = (v == null)?'':(v>=0?'eerr-pos':'eerr-neg');
+          return cell(v, rowCls);
+        }).join('')
+      +'</tr>';
+  }
+
+  var thead = '<thead><tr class="eerr-hdr"><td>Línea</td>'
+    + cols.map(function(c){return hdCol(c.label);}).join('')+'</tr></thead>';
+
+  var tbody = '<tbody>'
+    // Facturación
+    + secRow('Facturación')
+    + row('Facturación bruta', 'fact')
+    + row('− CMV (costo estándar)', 'cmv')
+    + totRow('= Margen de Contribución', 'mc')
+    + row('% MC', 'mcPct', '', true)
+
+    // Gastos variables (solo los que NO están en el CMV)
+    + secRow('Gastos Variables (no incluidos en el CMV)')
+    + row('↳ Envíos y distribución', 'gasB1', 'eerr-indent')
+    + totRow('= Gastos Variables', 'gasVar')
+    + totRow('= Margen Operativo', 'margOp')
+
+    // Gastos fijos
+    + secRow('Gastos Fijos')
+    + row('↳ Servicios y mantenimiento', 'gasC1', 'eerr-indent')
+    + row('↳ Mano de obra operativa', 'gasC2', 'eerr-indent')
+    + row('↳ Honorarios profesionales', 'gasC3', 'eerr-indent')
+    + totRow('= Gastos Fijos', 'gasFij')
+    + totRow('= EBITDA', 'ebitda')
+
+    // CAPEX
+    + secRow('Inversión en equipamiento o infraestructura (no afecta EBITDA)')
+    + row('↳ Equipamiento e infraestructura', 'gasCap', 'eerr-indent')
+    + totRow('= Resultado del período', 'resultado')
+
+    // Memo: materia prima real (ya contabilizada dentro del CMV estándar)
+    + secRow('Memo — Materia prima comprada (real) · NO se resta: ya está dentro del CMV')
+    + row('↳ Mat. Prima — Proveedor consolidado', 'gasA1', 'eerr-indent')
+    + row('↳ Mat. Prima — Compra individual', 'gasA2', 'eerr-indent')
+    + row('↳ Insumos de producción', 'gasA3', 'eerr-indent')
+    + row('↳ Total materia prima comprada', 'gasMP', 'eerr-indent')
+    + '</tbody>';
+
+  document.getElementById('eerrTbl').innerHTML = thead + tbody;
+}
+
+// ── Update EERR KPIs ─────────────────────────────────────────────
+function updateEERRKPIs(d) {
+  document.getElementById('e-mc').textContent     = fmtM(d.mc);
+  document.getElementById('e-mc-s').textContent   = d.fact>0?(d.mc/d.fact*100).toFixed(1)+'% sobre facturación':'—';
+  document.getElementById('e-ebitda').textContent  = fmtM(d.ebitda);
+  document.getElementById('e-ebitda-s').textContent= d.ebitda>=0?'positivo ✅':'negativo ⚠';
+  document.getElementById('e-cf').textContent      = fmtM(d.gasFij);
+  document.getElementById('e-cap').textContent     = fmtM(d.gasCap);
+}
+</script>
+</body>
+</html>
