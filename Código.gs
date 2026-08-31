@@ -266,7 +266,51 @@ function abrirMetas() {
     + 'El dashboard los toma al recargar (no requiere redeploy).', SpreadsheetApp.getUi().ButtonSet.OK);
 }
 
-function doGet() {
+// Wrappers PIN-gated para editar la meta de ventas mensual desde el panel
+// de Configuración del Dashboard, en vez de entrar a la hoja "Metas" a mano.
+function getMetaVentasMensual(pin) {
+  if (!_verificarPin_(pin)) return { ok: false, mensaje: 'PIN incorrecto.' };
+  var m = getMetas();
+  return { ok: true, objetivo: m.objetivo, cf: m.cf };
+}
+
+function guardarMetaVentasMensual(objetivo, cf, pin) {
+  if (!_verificarPin_(pin)) return { ok: false, mensaje: 'PIN incorrecto.' };
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sh = ss.getSheetByName('Metas') || crearHojaMetas(ss, 0, 0);
+  sh.getRange('B3').setValue(Number(objetivo) || 0);
+  sh.getRange('B4').setValue(Number(cf) || 0);
+  return { ok: true, mensaje: '✅ Meta de ventas mensual actualizada.' };
+}
+
+function doGet(e) {
+  var page = e && e.parameter && e.parameter.page;
+
+  if (page === 'manifest') {
+    return ContentService.createTextOutput(JSON.stringify(getManifestProduccion_()))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+
+  if (page === 'produccion') {
+    var tp = HtmlService.createTemplateFromFile('ProduccionForm');
+    tp.manifestUrl = ScriptApp.getService().getUrl() + '?page=manifest';
+    tp.icon192DataUri = 'data:image/png;base64,' + ICON_192_PRODUCCION_BASE64;
+    return tp.evaluate()
+      .setTitle('Producción — Guía de planta')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
+  if (page === 'stock') {
+    var tStock = HtmlService.createTemplateFromFile('Stock');
+    tStock.datos = JSON.stringify(getDatosStockParaPantalla());  // from Producción.gs
+    tStock.dashboardUrl = ScriptApp.getService().getUrl();
+    return tStock.evaluate()
+      .setTitle('AÑAÑAI · Stock')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
+
   var t       = HtmlService.createTemplateFromFile('Dashboard');
   var ventas  = getDatosParaDashboard();
   var gastos  = getDatosGastosParaDashboard();   // from Configuracion.gs
@@ -357,9 +401,11 @@ function getDatosParaDashboard() {
   };
 }
 
+// Semana sábado→viernes (semana comercial). d.getDay(): sáb=6, dom=0, lun=1...
+// El offset (+1)%7 lleva cualquier día de vuelta al sábado de esa semana.
 function _semLabel(fecha, tz) {
   var d = new Date(fecha); d.setHours(0,0,0,0);
-  d.setDate(d.getDate()-((d.getDay()+6)%7));
+  d.setDate(d.getDate()-((d.getDay()+1)%7));
   return Utilities.formatDate(d, tz, 'dd/MM');
 }
 
@@ -390,6 +436,8 @@ function onOpen() {
     .addToUi();
 
   gastoOnOpen();  // crea el menú 💸 AÑAÑAI Gastos (definido en Proveedores.gs)
+  produccionOnOpen();  // crea el menú 🏭 AÑAÑAI Producción (definido en Producción.gs)
+  stockOnOpen();  // crea el menú 📦 AÑAÑAI Stock (definido en Producción.gs)
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -492,8 +540,27 @@ function genId(prefijo, hoja_nombre) {
 // ════════════════════════════════════════════════════════════════
 function guardarDespacho(datos) {
   try {
+    var unidades = Number(datos.unidades);
+
+    // ── resolver SKU y validar/restar stock ANTES de guardar nada ──
+    var res = _claveStock_(datos.producto, datos.variante);
+    if (!res.ok) return { ok: false, mensaje: res.mensaje };
+
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_DESPACHOS);
+    var desId = genId('DES-', H_DESPACHOS);
+
+    var forzar = !!datos.forzarSinStock;
+    var movimiento = restarStockPorDespacho_(datos.producto, datos.variante, unidades, { desId: desId, forzar: forzar });
+
+    if (!movimiento.ok) {
+      // Sin stock suficiente y todavía no confirmó "igual imputar": no se
+      // guarda nada, se devuelve la alerta para que el formulario pida el motivo.
+      if (movimiento.necesitaConfirmacion) {
+        return { ok: false, necesitaConfirmacion: true, mensaje: movimiento.mensaje, stockActual: movimiento.stockActual };
+      }
+      return { ok: false, mensaje: movimiento.mensaje };
+    }
 
     // Buscar primera fila libre en col A desde DATA_ROW
     var colA = hoja.getRange('A'+DATA_ROW+':A1000').getValues();
@@ -502,9 +569,7 @@ function guardarDespacho(datos) {
       if (!colA[i][0]) { fila = DATA_ROW + i; break; }
     }
 
-    var desId    = genId('DES-', H_DESPACHOS);
     var fecha    = new Date();
-    var unidades = Number(datos.unidades);
     var precio   = Number(datos.precio);
     var monto    = unidades * precio;
     var estado   = 'Pendiente';  // toda venta nace en CxC; el cobro imputado la cierra (incluso Contado)
@@ -522,7 +587,7 @@ function guardarDespacho(datos) {
     hoja.getRange(fila, 11).setValue(monto).setNumberFormat('$#,##0');
     hoja.getRange(fila, 12).setValue(datos.condicion);
     hoja.getRange(fila, 13).setValue(estado);
-    hoja.getRange(fila, 14).setValue(datos.obs || '');
+    hoja.getRange(fila, 14).setValue((datos.obs || '') + (movimiento.sinStockSuficiente ? ' ⚠ imputado sin stock suficiente' : ''));
     hoja.getRange(fila, 15).setValue(fecha).setNumberFormat('DD/MM/YYYY HH:mm');
     hoja.getRange(fila, 16).setValue(_usuarioActual());
 
@@ -530,12 +595,23 @@ function guardarDespacho(datos) {
     var bg = (fila % 2 === 0) ? '#EEF3FA' : '#FFFFFF';
     hoja.getRange(fila, 1, 1, 16).setBackground(bg);
 
+    // Trazabilidad: si se imputó igual sin stock suficiente, queda registrado
+    // en "Alertas Stock" para poder revisarlo y corregirlo más tarde.
+    if (movimiento.sinStockSuficiente) {
+      registrarAlertaStock_({
+        desId: desId, sku: res.sku, producto: res.catalogo.nombre, variante: datos.variante || '',
+        cantidad: unidades, stockAlMomento: movimiento.stockPrevio, motivo: datos.motivoForzado || ''
+      });
+    }
+
     return {
       ok: true,
       desId: desId,
       monto: monto,
       estado: estado,
-      mensaje: '✅ ' + desId + ' — ' + datos.clienteNombre + ' · ' + datos.producto +
+      sinStockSuficiente: !!movimiento.sinStockSuficiente,
+      mensaje: (movimiento.sinStockSuficiente ? '⚠ Imputado SIN stock suficiente — queda anotado en "Alertas Stock" para revisar. · ' : '') +
+               '✅ ' + desId + ' — ' + datos.clienteNombre + ' · ' + datos.producto +
                (datos.variante ? ' ' + datos.variante : '') +
                ' · ' + unidades + ' u. · $' + monto.toLocaleString('es-AR') +
                ' · ' + datos.condicion +
@@ -1010,6 +1086,26 @@ function buildFormDespachoHTML(clientes, productos) {
       {sabor:'Jota',           tier:'Bajo', variante:'Pizza — Jota'},
       {sabor:'Fugazza',        tier:'Bajo', variante:'Pizza — Fugazza'},
       {sabor:'Capresse',       tier:'Bajo', variante:'Pizza — Capresse'}
+    ]},
+    // ── Sin tier: mismo precio para cualquier variante, pero cada una es
+    // un SKU de Stock distinto — antes el dropdown mandaba el nombre
+    // genérico y siempre descontaba del primer SKU (ej. Chipalmendras
+    // Común) sin importar cuál se vendió en realidad.
+    'Chipalmendras': { sabores: [
+      {sabor:'Común',           variante:'Común'},
+      {sabor:'Vegano',          variante:'Vegano'},
+      {sabor:'Chipa Saludable', variante:'Chipa Saludable'}
+    ]},
+    // Pan de Molde: unificado a un solo producto (PAN-001) — con/sin Semilla
+    // quedaron en el Catálogo (por si hacen falta después) pero ya no se
+    // ofrecen acá, confundían al operario. Por eso NO tiene entrada en
+    // FLAVORS: al no tener variantes configuradas, el desplegable no
+    // pregunta sabor y el despacho resuelve directo a PAN-001 vía Alias.
+    'Fideos': { sabores: [
+      {sabor:'Fettuccine',               variante:'Fettuccine'},
+      {sabor:'Sorrentinos',              variante:'Sorrentinos'},
+      {sabor:'Sorrentino Jamón y Queso', variante:'Sorrentino Jamón y Queso'},
+      {sabor:'Sorrentino Calabaza',      variante:'Sorrentino Calabaza'}
     ]}
   };
 
@@ -1047,8 +1143,8 @@ function buildFormDespachoHTML(clientes, productos) {
     + '<select id="prodSel" onchange="onProdChange()"><option value="">— Seleccioná —</option>'+prodNombreOpts+'</select></div>'
 
     // Variante / Sabor
-    + '<div class="field" id="varWrap" style="display:none"><label>Sabor<span class="req">*</span></label>'
-    + '<select id="varSel" onchange="onVarChange()"><option value="">— Elegí el sabor —</option></select></div>'
+    + '<div class="field" id="varWrap" style="display:none"><label>Variante<span class="req">*</span></label>'
+    + '<select id="varSel" onchange="onVarChange()"><option value="">— Elegí la variante —</option></select></div>'
 
     // Panel de precios de referencia
     + '<div class="panel-precios" id="panelPrecios"></div>'
@@ -1073,6 +1169,17 @@ function buildFormDespachoHTML(clientes, productos) {
     // Obs
     + '<div class="field"><label>Observaciones</label>'
     + '<textarea id="obsInp" placeholder="Aclaraciones, variantes específicas…"></textarea></div>'
+
+    // Bloque de confirmación cuando no hay stock suficiente — oculto por
+    // defecto, se muestra solo si el servidor responde necesitaConfirmacion
+    + '<div class="field" id="wrapForzar" style="display:none;margin-top:10px;padding:12px;border-radius:8px;background:#fff4e6;border:1px solid #f0c070">'
+    + '<div style="font-size:12.5px;font-weight:700;color:#a05010;margin-bottom:8px" id="txtForzar"></div>'
+    + '<label>Motivo <span style="font-weight:400;font-size:10px;color:#888">— obligatorio para imputar igual</span></label>'
+    + '<textarea id="motivoInp" placeholder="Ej: hay stock físico pero falta cargar la última producción…"></textarea>'
+    + '<div class="btns" style="margin-top:8px">'
+    + '<button type="button" class="b1" style="background:#e07020" onclick="confirmarForzar()">⚠ Igual imputar la venta</button>'
+    + '<button type="button" class="b2" onclick="cancelarForzar()">Cancelar</button>'
+    + '</div></div>'
 
     + '<div class="btns"><button class="b1" style="background:#2F5496" onclick="guardar()">💾 Guardar despacho</button>'
     + '<button class="b2" onclick="limpiar()">🗑 Limpiar</button></div>'
@@ -1170,9 +1277,9 @@ function buildFormDespachoHTML(clientes, productos) {
     + '  var varWrap=document.getElementById("varWrap");'
     + '  limpiarPrecio();'
     + '  if(FLAVORS[prod]){'
-    + '    varSel.innerHTML=\'<option value="">— Elegí el sabor —</option>\';'
+    + '    varSel.innerHTML=\'<option value="">— Elegí la variante —</option>\';'
     + '    FLAVORS[prod].sabores.forEach(function(s){'
-    + '      varSel.innerHTML+=\'<option value="\'+s.variante+\'" data-tier="\'+s.tier+\'">\'+s.sabor+\'</option>\';'
+    + '      varSel.innerHTML+=\'<option value="\'+s.variante+\'"\'+(s.tier?\' data-tier="\'+s.tier+\'"\':\'\')+\'>\'+s.sabor+\'</option>\';'
     + '    });'
     + '    varWrap.style.display="block";'
     + '  } else {'
@@ -1182,14 +1289,19 @@ function buildFormDespachoHTML(clientes, productos) {
     + '  }'
     + '}'
 
-    // ── Sabor ──
+    // ── Sabor / Variante ──
+    // Nota: "tier" solo existe para Tartines/Pizzas (precio distinto según
+    // Alto/Bajo). Chipalmendras, Pan de Molde y Fideos no tienen tier —
+    // el precio es el mismo para cualquier variante — así que lo que
+    // decide si hay que mostrar el panel es si HAY una opción elegida
+    // (sel.value), no si tiene tier.
     + 'function onVarChange(){'
     + '  var prod=v("prodSel");'
     + '  var sel=document.getElementById("varSel");'
+    + '  if(!sel.value){ limpiarPrecio(); return; }'
     + '  var opt=sel.options[sel.selectedIndex];'
     + '  var tier=opt?opt.getAttribute("data-tier"):null;'
-    + '  if(!tier){ limpiarPrecio(); return; }'
-    + '  mostrarPrecios(prod,tier);'
+    + '  mostrarPrecios(prod,tier||null);'
     + '}'
 
     // Re-renderiza el panel según selección actual (usado al cambiar cliente)
@@ -1198,9 +1310,10 @@ function buildFormDespachoHTML(clientes, productos) {
     + '  if(!prod) return;'
     + '  if(FLAVORS[prod]){'
     + '    var sel=document.getElementById("varSel");'
+    + '    if(!sel.value) return;'
     + '    var opt=sel.options[sel.selectedIndex];'
     + '    var tier=opt?opt.getAttribute("data-tier"):null;'
-    + '    if(tier) mostrarPrecios(prod,tier);'
+    + '    mostrarPrecios(prod,tier||null);'
     + '  } else { mostrarPrecios(prod,null); }'
     + '}'
 
@@ -1275,13 +1388,50 @@ function buildFormDespachoHTML(clientes, productos) {
     // precioTipo: si el precio ingresado coincide con el Añañai especial, se etiqueta así
     + '  var pa=precioAnanaiDe(prod);'
     + '  var precioTipo=(esAnanai&&pa!==null&&precio===pa)?"Precio Añañai":"P1";'
+    + '  var payload={cliId:cliId,clienteNombre:clienteNombre,producto:prod,variante:variante,'
+    + '    unidad:unidad,unidades:uniVal,precio:precio,precioTipo:precioTipo,'
+    + '    condicion:condicion,obs:obs,forzarSinStock:false,motivoForzado:""};'
+    + '  document.getElementById("wrapForzar").style.display="none";'
+    + '  enviarDespacho(payload);'
+    + '}'
+
+    // Envía el despacho al servidor. Si vuelve con necesitaConfirmacion=true
+    // (no hay stock suficiente), NO se guardó nada todavía: se muestra el
+    // aviso y se pide un motivo antes de reintentar con forzarSinStock=true.
+    + 'var pendienteForzar=null;'
+    + 'function enviarDespacho(payload){'
     + '  sp(true);'
     + '  google.script.run'
-    + '    .withSuccessHandler(function(r){sp(false);show(r.mensaje,r.ok);if(r.ok)limpiar();})'
+    + '    .withSuccessHandler(function(r){'
+    + '      sp(false);'
+    + '      if(!r.ok && r.necesitaConfirmacion){'
+    + '        pendienteForzar=payload;'
+    + '        document.getElementById("txtForzar").innerHTML="⚠ "+r.mensaje+" Si confirmás, la venta se guarda igual y el stock puede quedar en negativo — va a quedar anotado en la hoja \'Alertas Stock\' para revisar después.";'
+    + '        var wf=document.getElementById("wrapForzar"); wf.style.display="block";'
+    + '        wf.scrollIntoView({behavior:"smooth",block:"nearest"});'
+    + '        return;'
+    + '      }'
+    + '      show(r.mensaje,r.ok);'
+    + '      if(r.ok) limpiar();'
+    + '    })'
     + '    .withFailureHandler(function(e){sp(false);show("Error: "+e.message,false);})'
-    + '    .guardarDespacho({cliId:cliId,clienteNombre:clienteNombre,producto:prod,variante:variante,'
-    + '      unidad:unidad,unidades:uniVal,precio:precio,precioTipo:precioTipo,'
-    + '      condicion:condicion,obs:obs});'
+    + '    .guardarDespacho(payload);'
+    + '}'
+
+    + 'function confirmarForzar(){'
+    + '  var motivo=document.getElementById("motivoInp").value.trim();'
+    + '  if(!motivo){ show("Escribí el motivo para poder imputar igual.",false); return; }'
+    + '  if(!pendienteForzar) return;'
+    + '  pendienteForzar.forzarSinStock=true;'
+    + '  pendienteForzar.motivoForzado=motivo;'
+    + '  document.getElementById("wrapForzar").style.display="none";'
+    + '  enviarDespacho(pendienteForzar);'
+    + '}'
+
+    + 'function cancelarForzar(){'
+    + '  pendienteForzar=null;'
+    + '  document.getElementById("wrapForzar").style.display="none";'
+    + '  document.getElementById("motivoInp").value="";'
     + '}'
 
     + 'function limpiar(){'
@@ -1290,7 +1440,9 @@ function buildFormDespachoHTML(clientes, productos) {
     + '  document.getElementById("hintCli").className="hint";'
     + '  document.getElementById("varWrap").style.display="none";'
     + '  limpiarPrecio();'
-    + '  esAnanai=false; acumMes=0;'
+    + '  esAnanai=false; acumMes=0; pendienteForzar=null;'
+    + '  document.getElementById("motivoInp").value="";'
+    + '  document.getElementById("wrapForzar").style.display="none";'
     + '  document.getElementById("msg").style.display="none";'
     + '}'
 

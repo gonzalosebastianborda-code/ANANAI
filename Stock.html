@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AÑAÑAI · Stock</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+:root{
+  --paper:#F1EFE6;
+  --paper-raised:#FBFAF5;
+  --ink:#1E2321;
+  --steel:#6B7169;
+  --line:#DAD5C6;
+  --go:#2F6B4F;
+  --go-soft:#E1EDE5;
+  --warn:#B8791F;
+  --warn-soft:#F5E8D2;
+  --urgent:#B23A2E;
+  --urgent-soft:#F5DEDA;
+  --radius:14px;
+  --font-display:'Oswald',sans-serif;
+  --font-body:'IBM Plex Sans',sans-serif;
+  --font-mono:'IBM Plex Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--paper);color:var(--ink);font-family:var(--font-body);font-size:13px;min-height:100vh;-webkit-font-smoothing:antialiased}
+.nav{background:var(--paper-raised);border-bottom:1px solid var(--line);padding:14px 26px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:200;flex-wrap:wrap}
+.logo{font-family:var(--font-display);font-weight:600;font-size:19px;letter-spacing:.01em;white-space:nowrap}.logo span{color:var(--go)}
+.tabs{display:flex;gap:6px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:4px}
+.tab{padding:7px 14px;border-radius:8px;font-size:12.5px;font-weight:500;font-family:var(--font-body);color:var(--steel);cursor:pointer;border:none;background:transparent;white-space:nowrap;transition:all .15s;display:flex;align-items:center;gap:6px}
+.tab.on{background:var(--ink);color:var(--paper)}
+.tab:hover:not(.on){color:var(--ink);background:var(--paper-raised)}
+.tab-badge{background:var(--urgent);color:var(--urgent-soft);font-size:10px;font-weight:700;border-radius:20px;padding:1px 7px;min-width:14px;text-align:center}
+.navlink{margin-left:auto;color:var(--steel);font-size:12px;text-decoration:none;font-family:var(--font-body)}
+.navlink:hover{color:var(--ink)}
+main{max-width:1200px;margin:0 auto;padding:22px 26px}
+.searchbar{margin-bottom:18px}
+.searchbar input{width:100%;background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:12px 14px;font-size:14px;color:var(--ink);font-family:var(--font-body);outline:none}
+.searchbar input:focus{outline:2px solid var(--go);outline-offset:1px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:22px}
+.kpi{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:15px 17px;position:relative;overflow:hidden;cursor:pointer;transition:border-color .15s}
+.kpi:hover{border-color:var(--steel)}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:4px;background:var(--kc,var(--go))}
+.kpi.g{--kc:var(--go)}.kpi.y{--kc:var(--warn)}.kpi.r{--kc:var(--urgent)}
+.kl{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--steel);margin-bottom:8px;font-family:var(--font-body)}
+.kv{font-family:var(--font-mono);font-size:26px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;color:var(--kc,var(--ink))}
+.kv-sub{font-size:10.5px;color:var(--steel);margin-top:6px;font-family:var(--font-body)}
+.ct{font-family:var(--font-display);font-size:15px;font-weight:600;color:var(--ink);margin:24px 0 12px}
+.sec{display:none}.sec.on{display:block}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.pcard{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:border-color .15s;border-left:4px solid var(--pc,var(--line))}
+.pcard:hover{border-color:var(--pc,var(--steel))}
+.pcard.estado-ok{--pc:var(--go)}
+.pcard.estado-bajo{--pc:var(--warn)}
+.pcard.estado-critico{--pc:var(--urgent)}
+.pcard.estado-neutro{--pc:var(--line)}
+.pc-top{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:10px}
+.pc-name{font-weight:600;font-size:13.5px;color:var(--ink);line-height:1.3;font-family:var(--font-body)}
+.chip{font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:.03em;color:var(--steel);background:var(--paper);border:1px solid var(--line);border-radius:20px;padding:3px 9px;white-space:nowrap}
+.pc-stock{font-family:var(--font-mono);font-size:26px;font-weight:700;margin-bottom:8px;color:var(--pc,var(--ink));font-variant-numeric:tabular-nums}
+.pc-unit{font-size:11px;font-weight:400;color:var(--steel);font-family:var(--font-body)}
+.pc-meta{display:flex;justify-content:space-between;font-size:10.5px;color:var(--steel);font-family:var(--font-mono)}
+.empty{text-align:center;padding:36px 10px;color:var(--steel);font-size:12.5px}
+.togglewrap{margin-bottom:12px;font-size:12px;color:var(--steel);display:flex;align-items:center;gap:6px}
+.alert-row{display:flex;justify-content:space-between;align-items:center;gap:12px;background:var(--paper-raised);border:1px solid var(--line);border-left:4px solid var(--urgent);border-radius:var(--radius);padding:13px 16px;margin-bottom:8px}
+.alert-row.resuelta{border-left-color:var(--go);opacity:.65}
+.alert-title{font-size:12.5px;font-weight:600;color:var(--ink);margin-bottom:3px;font-family:var(--font-body)}
+.alert-sub{font-size:11px;color:var(--steel);line-height:1.5}
+.btn{background:var(--paper-raised);border:1px solid var(--line);color:var(--ink);border-radius:8px;padding:8px 13px;font-size:11.5px;font-weight:500;cursor:pointer;white-space:nowrap;font-family:var(--font-body)}
+.btn:hover{border-color:var(--go);color:var(--go)}
+.tag-resuelto{font-size:11px;color:var(--go);font-weight:600;white-space:nowrap;font-family:var(--font-body)}
+.lock-box{text-align:center;padding:50px 20px;color:var(--steel)}
+.lock-box p{margin-bottom:14px;font-size:13px}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(30,35,33,.55);z-index:500;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.show{display:flex}
+.modal{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);max-width:480px;width:100%;max-height:82vh;overflow-y:auto;padding:22px 24px}
+.modal-hdr{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.modal-title{font-family:var(--font-display);font-size:19px;font-weight:600;color:var(--ink)}
+.modal-sub{font-size:11.5px;color:var(--steel);margin-bottom:16px;font-family:var(--font-mono)}
+.modal-close{background:none;border:none;color:var(--steel);font-size:20px;cursor:pointer;line-height:1;padding:0 4px}
+.modal-close:hover{color:var(--ink)}
+.stat-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(100px,1fr));gap:10px;margin-bottom:18px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.stat-l{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--steel);margin-bottom:4px;font-family:var(--font-body)}
+.stat-v{font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--ink)}
+.mov-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);font-size:11.5px}
+.mov-row:last-child{border-bottom:none}
+.mov-tipo{font-family:var(--font-mono);font-size:10px;font-weight:700;padding:3px 8px;border-radius:20px;white-space:nowrap;height:fit-content;letter-spacing:.02em}
+.mov-tipo.prod{background:var(--go-soft);color:var(--go)}
+.mov-tipo.desp{background:var(--paper);color:var(--steel);border:1px solid var(--line)}
+.mov-tipo.alerta{background:var(--urgent-soft);color:var(--urgent)}
+.mov-detalle{color:var(--steel);font-size:10.5px;margin-top:3px}
+.mov-cant{font-weight:700;white-space:nowrap;font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+.mov-cant.pos{color:var(--go)}
+.mov-cant.neg{color:var(--urgent)}
+</style>
+</head>
+<body>
+
+<div class="nav">
+  <div class="logo">AÑAÑAI <span>·</span> Stock</div>
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-tab="todos">📦 Todos</button>
+    <button class="tab" data-tab="terminados">🍞 Terminados</button>
+    <button class="tab" data-tab="insumos">🧺 Insumos</button>
+    <button class="tab" data-tab="alertas">⚠ Alertas <span class="tab-badge" id="alertBadge">0</span></button>
+    <button class="tab" data-tab="correcciones">🔧 Correcciones</button>
+    <button class="tab" data-tab="auditoria">🧮 Auditoría semanal</button>
+  </div>
+  <a class="navlink" id="dashLink" href="#" target="_blank">← Volver al Dashboard</a>
+</div>
+
+<main>
+  <div class="searchbar">
+    <input type="text" id="buscador" placeholder="Buscar producto o SKU…" oninput="render()">
+  </div>
+
+  <div class="kpis">
+    <div class="kpi" onclick="irATab('todos')">
+      <div class="kl">SKUs activos</div>
+      <div class="kv" id="kpiTotal">—</div>
+    </div>
+    <div class="kpi y" onclick="irATab('alertas')">
+      <div class="kl">Stock bajo</div>
+      <div class="kv" id="kpiBajo">—</div>
+    </div>
+    <div class="kpi r" onclick="irATab('alertas')">
+      <div class="kl">Sin stock</div>
+      <div class="kv" id="kpiSinStock">—</div>
+    </div>
+    <div class="kpi r" onclick="irATab('alertas')">
+      <div class="kl">Alertas sin revisar</div>
+      <div class="kv" id="kpiAlertas">—</div>
+    </div>
+    <div class="kpi" onclick="irATab('terminados')">
+      <div class="kl">Capital inmovilizado</div>
+      <div class="kv" id="kpiCapital">—</div>
+      <div class="kv-sub" id="kpiCapitalSub"></div>
+    </div>
+  </div>
+
+  <div class="sec on" id="sec-productos">
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="sec" id="sec-alertas">
+    <div class="ct">Stock bajo — menos del 20% de la meta semanal</div>
+    <div class="grid" id="gridBajo"></div>
+
+    <div class="ct">Despachos imputados sin stock suficiente</div>
+    <div class="togglewrap"><label><input type="checkbox" id="verResueltas" onchange="render()"> Ver también las ya revisadas</label></div>
+    <div id="listaAlertas"></div>
+  </div>
+
+  <div class="sec" id="sec-correcciones">
+    <div id="corr-lock" class="lock-box">
+      <p>🔒 Sección protegida — ingresá el PIN para continuar.</p>
+      <button class="btn" onclick="pedirPin('correcciones')">Ingresar PIN</button>
+    </div>
+    <div id="corr-content" style="display:none">
+      <div class="ct">Deshacer un movimiento</div>
+      <p class="cs">Buscá el movimiento mal cargado y anulalo — el Stock se corrige solo, sin tocar ninguna celda a mano.</p>
+      <input type="text" id="corr-buscador" placeholder="Buscar por producto, SKU o detalle…" oninput="renderCorrecciones()" style="margin-bottom:14px">
+      <div id="corr-lista"></div>
+    </div>
+  </div>
+
+  <div class="sec" id="sec-auditoria">
+    <div id="aud-lock" class="lock-box">
+      <p>🔒 Sección protegida — ingresá el PIN para continuar.</p>
+      <button class="btn" onclick="pedirPin('auditoria')">Ingresar PIN</button>
+    </div>
+    <div id="aud-content" style="display:none">
+      <div class="ct">Auditoría semanal de stock</div>
+      <p class="cs">Cargá lo que hay realmente en planta — el sistema calcula la diferencia y ajusta con un clic. Solo se aplican los productos donde escribas un valor distinto al del sistema.</p>
+      <input type="text" id="aud-motivo" placeholder="Motivo / responsable del conteo (opcional)" style="margin-bottom:14px">
+      <div id="aud-lista" class="grid"></div>
+      <button class="btn" style="margin-top:16px;background:var(--go);color:var(--paper);border-color:var(--go)" onclick="guardarAjustes()">💾 Guardar ajustes</button>
+    </div>
+  </div>
+</main>
+
+<div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)cerrarDetalle()">
+  <div class="modal" id="modal"></div>
+</div>
+
+<script>
+var DATA = JSON.parse('<?= datos ?>');
+var TAB = 'todos';
+
+document.getElementById('dashLink').href = '<?= dashboardUrl ?>';
+
+function norm(s){
+  return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+
+function estadoDe(p){
+  if(p.tipo==='Insumo') return 'neutro';
+  if(p.stock<=0) return 'critico';
+  if(p.metaSemanal && p.stock < p.metaSemanal*0.2) return 'bajo';
+  return 'ok';
+}
+
+function fmtFecha(ts){
+  if(!ts) return 'sin datos';
+  var d=new Date(ts);
+  return d.toLocaleDateString('es-AR')+' '+d.toLocaleTimeString('es-AR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function haceTiempo(ts){
+  if(!ts) return 'sin datos';
+  var diff=Date.now()-ts, min=Math.floor(diff/60000);
+  if(min<1) return 'recién';
+  if(min<60) return 'hace '+min+' min';
+  var h=Math.floor(min/60);
+  if(h<24) return 'hace '+h+' h';
+  return 'hace '+Math.floor(h/24)+' d';
+}
+
+function fmtPesos(v){
+  if(v==null) return '—';
+  return '$'+Math.round(v).toLocaleString('es-AR');
+}
+
+function irATab(t){
+  TAB=t;
+  document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on', b.dataset.tab===t);});
+  var esProductos = (t==='todos' || t==='terminados' || t==='insumos');
+  document.getElementById('sec-productos').classList.toggle('on', esProductos);
+  document.getElementById('sec-alertas').classList.toggle('on', t==='alertas');
+  document.getElementById('sec-correcciones').classList.toggle('on', t==='correcciones');
+  document.getElementById('sec-auditoria').classList.toggle('on', t==='auditoria');
+  render();
+}
+
+document.querySelectorAll('.tab').forEach(function(b){
+  b.addEventListener('click', function(){ irATab(b.dataset.tab); });
+});
+
+function productosFiltrados(){
+  var q=norm(document.getElementById('buscador').value.trim());
+  return DATA.productos.filter(function(p){
+    if(TAB==='terminados' && p.tipo!=='Terminado') return false;
+    if(TAB==='insumos' && p.tipo!=='Insumo') return false;
+    if(!q) return true;
+    return norm(p.nombre).indexOf(q)>-1 || norm(p.sku).indexOf(q)>-1 || norm(p.categoria).indexOf(q)>-1;
+  });
+}
+
+function tarjetaProducto(p){
+  var est=estadoDe(p);
+  var div=document.createElement('div');
+  div.className='pcard estado-'+est;
+  div.onclick=function(){ abrirDetalle(p.sku); };
+  div.innerHTML=
+    '<div class="pc-top"><div class="pc-name">'+p.nombre+'</div><span class="chip">'+p.categoria+'</span></div>'+
+    '<div class="pc-stock">'+p.stock+' <span class="pc-unit">'+(p.unidad||'u.')+'</span></div>'+
+    '<div class="pc-meta"><span>'+p.sku+'</span><span>'+haceTiempo(p.actualizado)+'</span></div>';
+  return div;
+}
+
+function render(){
+  var grid=document.getElementById('grid');
+  grid.innerHTML='';
+  var lista=productosFiltrados();
+  if(!lista.length){ grid.innerHTML='<div class="empty">Sin resultados</div>'; }
+  else lista.forEach(function(p){ grid.appendChild(tarjetaProducto(p)); });
+
+  var bajos=DATA.productos.filter(function(p){ return estadoDe(p)==='bajo' || estadoDe(p)==='critico'; });
+  var gridBajo=document.getElementById('gridBajo');
+  gridBajo.innerHTML='';
+  if(!bajos.length){ gridBajo.innerHTML='<div class="empty">Ningún producto por debajo del umbral 🎉</div>'; }
+  else bajos.forEach(function(p){ gridBajo.appendChild(tarjetaProducto(p)); });
+
+  var verResueltas=document.getElementById('verResueltas').checked;
+  var listaAlertas=document.getElementById('listaAlertas');
+  listaAlertas.innerHTML='';
+  var alertas=DATA.alertas.filter(function(a){ return verResueltas || a.estado.indexOf('Resuelto')!==0; });
+  if(!alertas.length){ listaAlertas.innerHTML='<div class="empty">No hay despachos sin stock suficiente pendientes de revisar</div>'; }
+  alertas.forEach(function(a){
+    var resuelta=a.estado.indexOf('Resuelto')===0;
+    var row=document.createElement('div');
+    row.className='alert-row'+(resuelta?' resuelta':'');
+    row.innerHTML=
+      '<div><div class="alert-title">'+a.desId+' — '+a.producto+(a.variante?' · '+a.variante:'')+' · '+a.cantidad+' u.</div>'+
+      '<div class="alert-sub">Stock al momento: '+a.stockAlMomento+' · Motivo: "'+a.motivo+'" · '+a.usuario+' · '+fmtFecha(a.f)+'</div></div>';
+    if(resuelta){
+      var tag=document.createElement('span'); tag.className='tag-resuelto'; tag.textContent='✓ Revisado';
+      row.appendChild(tag);
+    } else {
+      var btn=document.createElement('button'); btn.className='btn'; btn.textContent='✓ Marcar revisado';
+      btn.onclick=function(){ marcarRevisada(a.fila, btn); };
+      row.appendChild(btn);
+    }
+    listaAlertas.appendChild(row);
+  });
+
+  document.getElementById('kpiTotal').textContent=DATA.productos.length;
+  document.getElementById('kpiBajo').textContent=DATA.productos.filter(function(p){return estadoDe(p)==='bajo';}).length;
+  document.getElementById('kpiSinStock').textContent=DATA.productos.filter(function(p){return estadoDe(p)==='critico';}).length;
+  var pend=DATA.alertas.filter(function(a){return a.estado.indexOf('Resuelto')!==0;}).length;
+  document.getElementById('kpiAlertas').textContent=pend;
+  document.getElementById('alertBadge').textContent=pend;
+
+  document.getElementById('kpiCapital').textContent=fmtPesos(DATA.capital.valor);
+  document.getElementById('kpiCapitalSub').textContent=
+    DATA.capital.sinCosto>0 ? DATA.capital.sinCosto+' de '+DATA.capital.totalTerminados+' sin costo cargado' : 'todos los terminados con costo cargado';
+}
+
+function marcarRevisada(fila, btn){
+  btn.disabled=true; btn.textContent='Guardando…';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(r && r.ok){
+        var a=DATA.alertas.find(function(x){return x.fila===fila;});
+        if(a) a.estado='Resuelto';
+        render();
+      } else {
+        btn.disabled=false; btn.textContent='✓ Marcar revisado';
+      }
+    })
+    .withFailureHandler(function(){ btn.disabled=false; btn.textContent='✓ Marcar revisado'; })
+    .marcarAlertaRevisada(fila);
+}
+
+function abrirDetalle(sku){
+  var p=DATA.productos.find(function(x){return x.sku===sku;});
+  if(!p) return;
+  var movs=DATA.movimientos.filter(function(m){return m.sku===sku;}).slice(0,30);
+  var statsItems=[
+    {l:'Stock actual', v:p.stock+' '+(p.unidad||'')},
+    {l:'Merma acumulada', v:p.merma}
+  ];
+  if(p.tipo==='Terminado'){
+    statsItems.push({l:'Meta semanal', v:(p.metaSemanal!=null?p.metaSemanal:'—')});
+    if(p.cvu!=null){
+      statsItems.push({l:'Costo unitario', v:fmtPesos(p.cvu)});
+      statsItems.push({l:'Valor a costo', v:fmtPesos(p.valorAcosto)});
+    } else {
+      statsItems.push({l:'Costo unitario', v:'sin cargar'});
+    }
+  }
+  var stats='<div class="stat-row">'+statsItems.map(function(s){
+    return '<div class="stat"><div class="stat-l">'+s.l+'</div><div class="stat-v">'+s.v+'</div></div>';
+  }).join('')+'</div>';
+  var hist='<div class="ct" style="margin-top:0">Historial de movimientos</div>';
+  if(!movs.length){
+    hist+='<div class="empty">Todavía no hay movimientos registrados para este producto</div>';
+  } else {
+    movs.forEach(function(m){
+      var esAlerta=m.detalle.indexOf('sin stock suficiente')>-1;
+      var claseTipo=esAlerta?'alerta':(m.tipo==='Producción'?'prod':'desp');
+      var signo=m.cantidad>0?'+':'';
+      hist+='<div class="mov-row">'+
+        '<div><span class="mov-tipo '+claseTipo+'">'+m.tipo+'</span>'+
+        '<div class="mov-detalle">'+fmtFecha(m.f)+' · '+m.usuario+(m.detalle?' · '+m.detalle:'')+'</div></div>'+
+        '<div class="mov-cant '+(m.cantidad>=0?'pos':'neg')+'">'+signo+m.cantidad+'</div>'+
+        '</div>';
+    });
+  }
+  document.getElementById('modal').innerHTML=
+    '<div class="modal-hdr"><div><div class="modal-title">'+p.nombre+'</div>'+
+    '<div class="modal-sub">'+p.sku+' · '+p.categoria+'</div></div>'+
+    '<button class="modal-close" onclick="cerrarDetalle()">✕</button></div>'+
+    stats+hist;
+  document.getElementById('modalOverlay').classList.add('show');
+}
+
+function cerrarDetalle(){
+  document.getElementById('modalOverlay').classList.remove('show');
+}
+
+// ════════════════════════════════════════════════════════════════
+// PIN — protege Correcciones y Auditoría semanal. El PIN se guarda en
+// memoria mientras dure la pestaña del navegador (no queda grabado en
+// ningún lado); hay que volver a ingresarlo si se recarga la página.
+// ════════════════════════════════════════════════════════════════
+var pinGuardado = null;
+
+function pedirPin(seccion){
+  var intento = prompt('Ingresá el PIN de Correcciones:');
+  if (intento === null || intento === '') return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (r && r.ok) {
+        pinGuardado = intento;
+        document.getElementById(seccion==='correcciones' ? 'corr-lock' : 'aud-lock').style.display = 'none';
+        document.getElementById(seccion==='correcciones' ? 'corr-content' : 'aud-content').style.display = 'block';
+        if (seccion === 'correcciones') renderCorrecciones(); else renderAuditoria();
+      } else {
+        alert('PIN incorrecto.');
+      }
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .verificarPinCorrecciones(intento);
+}
+
+// ════════════════════════════════════════════════════════════════
+// CORRECCIONES — deshacer un movimiento mal cargado
+// ════════════════════════════════════════════════════════════════
+function renderCorrecciones(){
+  var q = norm(document.getElementById('corr-buscador').value.trim());
+  var lista = document.getElementById('corr-lista');
+  var movs = DATA.movimientos.filter(function(m){
+    if (!q) return true;
+    return norm(m.producto).indexOf(q)>-1 || norm(m.sku).indexOf(q)>-1 || norm(m.detalle).indexOf(q)>-1;
+  }).slice(0, 60);
+  lista.innerHTML = '';
+  if (!movs.length){ lista.innerHTML = '<div class="empty">Sin resultados</div>'; return; }
+  movs.forEach(function(m){
+    var anulado = m.estado === 'Anulado';
+    var row = document.createElement('div');
+    row.className = 'alert-row' + (anulado ? ' resuelta' : '');
+    var signo = m.cantidad >= 0 ? '+' : '';
+    row.innerHTML =
+      '<div><div class="alert-title">'+m.tipo+' · '+m.producto+' ('+m.sku+') · '+signo+m.cantidad+'</div>'+
+      '<div class="alert-sub">'+fmtFecha(m.f)+' · '+m.usuario+(m.detalle ? ' · '+m.detalle : '')+'</div></div>';
+    if (anulado){
+      var tag = document.createElement('span'); tag.className = 'tag-resuelto'; tag.textContent = '✓ Anulado';
+      row.appendChild(tag);
+    } else if (m.tipo === 'Corrección'){
+      var tag2 = document.createElement('span'); tag2.className = 'tag-resuelto'; tag2.style.color = 'var(--steel)'; tag2.textContent = 'Corrección';
+      row.appendChild(tag2);
+    } else {
+      var btn = document.createElement('button'); btn.className = 'btn'; btn.textContent = '↩ Deshacer';
+      btn.onclick = function(){ deshacerMov(m.fila, btn); };
+      row.appendChild(btn);
+    }
+    lista.appendChild(row);
+  });
+}
+
+function deshacerMov(fila, btn){
+  var motivo = prompt('¿Por qué se deshace este movimiento? (breve)');
+  if (motivo === null) return;
+  btn.disabled = true; btn.textContent = 'Aplicando…';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (r && r.ok){
+        var m = DATA.movimientos.find(function(x){ return x.fila === fila; });
+        if (m) m.estado = 'Anulado';
+        alert(r.mensaje);
+        renderCorrecciones();
+      } else {
+        alert(r ? r.mensaje : 'Error desconocido');
+        btn.disabled = false; btn.textContent = '↩ Deshacer';
+      }
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); btn.disabled = false; btn.textContent = '↩ Deshacer'; })
+    .deshacerMovimientoStock(fila, pinGuardado, motivo);
+}
+
+// ════════════════════════════════════════════════════════════════
+// AUDITORÍA SEMANAL — cargar el conteo físico real y ajustar
+// ════════════════════════════════════════════════════════════════
+function renderAuditoria(){
+  var lista = document.getElementById('aud-lista');
+  lista.innerHTML = '';
+  DATA.productos.filter(function(p){ return p.tipo === 'Terminado'; }).forEach(function(p){
+    var row = document.createElement('div');
+    row.className = 'pcard';
+    row.innerHTML =
+      '<div class="pc-top"><div class="pc-name">'+p.nombre+'</div><span class="chip">'+p.sku+'</span></div>'+
+      '<div style="font-size:11px;color:var(--steel);margin-bottom:6px">Sistema: <b style="color:var(--ink)">'+p.stock+' '+(p.unidad||'')+'</b></div>'+
+      '<input type="number" placeholder="Conteo real" data-sku="'+p.sku+'" data-sistema="'+p.stock+'" oninput="actualizarDelta(this)" '+
+      'style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-mono);font-size:14px;margin-bottom:6px">'+
+      '<div id="delta-'+p.sku+'" style="font-size:11.5px;font-weight:600;min-height:14px"></div>';
+    lista.appendChild(row);
+  });
+}
+
+function actualizarDelta(input){
+  var sistema = Number(input.dataset.sistema);
+  var span = document.getElementById('delta-'+input.dataset.sku);
+  if (input.value === '' || isNaN(Number(input.value))){ span.textContent = ''; return; }
+  var diff = Number(input.value) - sistema;
+  if (diff === 0){ span.textContent = '= sin diferencia'; span.style.color = 'var(--steel)'; }
+  else { span.textContent = (diff > 0 ? '+' : '') + diff + ' vs. sistema'; span.style.color = diff > 0 ? 'var(--go)' : 'var(--urgent)'; }
+}
+
+function guardarAjustes(){
+  var ajustes = [];
+  document.querySelectorAll('#aud-lista input[data-sku]').forEach(function(inp){
+    if (inp.value !== '' && Number(inp.value) !== Number(inp.dataset.sistema)){
+      ajustes.push({ sku: inp.dataset.sku, stockReal: Number(inp.value) });
+    }
+  });
+  if (!ajustes.length){ alert('No cargaste ningún valor distinto al del sistema.'); return; }
+  if (!confirm('Vas a ajustar '+ajustes.length+' producto(s). ¿Confirmás?')) return;
+  var motivo = document.getElementById('aud-motivo').value;
+  google.script.run
+    .withSuccessHandler(function(r){
+      alert(r.mensaje);
+      if (r.aplicados > 0) location.reload();
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .registrarAjustesStock(ajustes, pinGuardado, motivo);
+}
+
+render();
+</script>
+</body>
+</html>

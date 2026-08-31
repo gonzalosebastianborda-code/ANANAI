@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Producción — Guía de planta</title>
+<link rel="manifest" href="<?= manifestUrl ?>">
+<link rel="apple-touch-icon" href="<?= icon192DataUri ?>">
+<meta name="theme-color" content="#2F6B4F">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F1EFE6;
+    --paper-raised:#FBFAF5;
+    --ink:#1E2321;
+    --steel:#6B7169;
+    --line:#DAD5C6;
+    --go:#2F6B4F;
+    --go-soft:#E1EDE5;
+    --warn:#B8791F;
+    --warn-soft:#F5E8D2;
+    --urgent:#B23A2E;
+    --urgent-soft:#F5DEDA;
+    --radius:14px;
+    --font-display:'Oswald',sans-serif;
+    --font-body:'IBM Plex Sans',sans-serif;
+    --font-mono:'IBM Plex Mono',monospace;
+  }
+
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:#22261F;
+    font-family:var(--font-body);
+    color:var(--ink);
+    min-height:100vh;
+    display:flex;
+    justify-content:center;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  .app{
+    width:100%;
+    max-width:430px;
+    min-height:100vh;
+    background:var(--paper);
+    display:flex;
+    flex-direction:column;
+    position:relative;
+    box-shadow:0 0 60px rgba(0,0,0,0.35);
+  }
+
+  /* ---------- header ---------- */
+  .app-header{
+    padding:20px 20px 14px;
+    border-bottom:1px solid var(--line);
+    background:var(--paper);
+    position:sticky;
+    top:0;
+    z-index:5;
+  }
+  .role-tag{
+    display:inline-block;
+    font-family:var(--font-mono);
+    font-size:11px;
+    letter-spacing:0.04em;
+    color:var(--steel);
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:20px;
+    padding:3px 10px;
+    margin-bottom:10px;
+  }
+  .app-title{
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:26px;
+    letter-spacing:0.01em;
+    margin:0;
+    line-height:1.1;
+  }
+  .app-date{
+    font-size:13px;
+    color:var(--steel);
+    margin-top:4px;
+  }
+
+  /* ---------- views ---------- */
+  .view{flex:1; padding:16px 16px 40px;}
+
+  /* ---------- ticket card ---------- */
+  .ticket{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px 18px 16px;
+    margin-bottom:14px;
+    position:relative;
+    overflow:hidden;
+  }
+  .ticket::before{
+    content:"";
+    position:absolute;
+    top:0; left:0; right:0;
+    height:6px;
+    background-image:radial-gradient(circle, var(--paper) 42%, transparent 43%);
+    background-size:14px 14px;
+    background-position:0 -4px;
+  }
+  .ticket-top{padding-top:6px;}
+
+  .prod-row{display:flex; align-items:flex-end; justify-content:space-between; gap:10px;}
+  .metric{
+    font-family:var(--font-mono);
+    font-variant-numeric:tabular-nums;
+    font-weight:700;
+    font-size:2rem;
+    letter-spacing:-0.02em;
+    line-height:1;
+  }
+  .metric-label{font-size:12px; color:var(--steel); margin-top:2px;}
+  .chip{
+    font-family:var(--font-mono);
+    font-size:11px;
+    font-weight:600;
+    letter-spacing:0.05em;
+    text-transform:uppercase;
+    padding:4px 9px;
+    border-radius:20px;
+    white-space:nowrap;
+  }
+  .chip--urgente{background:var(--urgent-soft); color:var(--urgent);}
+  .chip--atento{background:var(--warn-soft); color:var(--warn);}
+  .chip--cumplido{background:var(--go-soft); color:var(--go);}
+  .metric.urgente{color:var(--urgent);}
+  .metric.atento{color:var(--warn);}
+  .metric.cumplido{color:var(--go);}
+
+  .bar-track{
+    height:6px;
+    background:var(--line);
+    border-radius:6px;
+    margin-top:12px;
+    overflow:hidden;
+  }
+  .bar-fill{height:100%; border-radius:6px;}
+  .bar-fill.urgente{background:var(--urgent);}
+  .bar-fill.atento{background:var(--warn);}
+  .bar-fill.cumplido{background:var(--go);}
+
+  .cta-main{
+    display:block;
+    width:100%;
+    margin-top:6px;
+    background:var(--ink);
+    color:var(--paper);
+    border:none;
+    border-radius:var(--radius);
+    font-family:var(--font-display);
+    font-weight:600;
+    font-size:16px;
+    letter-spacing:0.02em;
+    padding:16px;
+    cursor:pointer;
+  }
+  .cta-main:active{transform:scale(0.98);}
+  .cta-main:disabled{opacity:0.55; cursor:default; transform:none;}
+
+  /* ---------- forms ---------- */
+  .field{margin-bottom:18px;}
+  .field label{
+    display:block;
+    font-size:12px;
+    font-weight:600;
+    color:var(--steel);
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    margin-bottom:8px;
+  }
+  select, input[type="date"], input[type="number"], input[type="text"], textarea{
+    width:100%;
+    font-family:var(--font-body);
+    font-size:16px;
+    padding:13px 14px;
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:var(--paper-raised);
+    color:var(--ink);
+  }
+  select:focus, input:focus, textarea:focus, button:focus-visible{
+    outline:2px solid var(--go);
+    outline-offset:1px;
+  }
+  input[type="number"]{
+    font-family:var(--font-mono);
+    font-weight:700;
+    font-size:1.6rem;
+    font-variant-numeric:tabular-nums;
+  }
+  textarea{resize:none; min-height:64px; font-size:14px;}
+
+  .field-hint{
+    font-size:12px;
+    color:var(--steel);
+    margin:-3px 0 8px;
+    line-height:1.4;
+  }
+
+  .helper-error{
+    font-size:13px;
+    color:var(--urgent);
+    background:var(--urgent-soft);
+    border-radius:8px;
+    padding:10px 12px;
+    margin-top:4px;
+  }
+
+  .segmented{display:flex; gap:8px;}
+  .segmented button{
+    flex:1;
+    font-family:var(--font-body);
+    font-size:14px;
+    font-weight:500;
+    padding:11px 6px;
+    border-radius:9px;
+    border:1px solid var(--line);
+    background:var(--paper-raised);
+    color:var(--ink);
+    cursor:pointer;
+  }
+  .segmented button.active{
+    background:var(--ink);
+    color:var(--paper);
+    border-color:var(--ink);
+  }
+
+  /* ---------- stamp overlay ---------- */
+  .stamp-overlay{
+    display:none;
+    position:fixed; inset:0;
+    background:rgba(30,35,33,0.55);
+    align-items:center;
+    justify-content:center;
+    z-index:20;
+    padding:24px;
+  }
+  .stamp-overlay.show{display:flex;}
+  .stamp{
+    background:var(--paper-raised);
+    border:3px solid var(--go);
+    border-radius:16px;
+    padding:32px 26px;
+    max-width:340px;
+    width:100%;
+    text-align:center;
+    transform:rotate(-2deg);
+    animation:stampIn 0.25s ease-out;
+  }
+  @keyframes stampIn{
+    from{opacity:0; transform:rotate(-2deg) scale(0.9);}
+    to{opacity:1; transform:rotate(-2deg) scale(1);}
+  }
+  .stamp-title{
+    font-family:var(--font-display);
+    font-weight:700;
+    font-size:22px;
+    color:var(--go);
+    letter-spacing:0.02em;
+    margin-bottom:10px;
+  }
+  .stamp-detail{font-family:var(--font-mono); font-size:14px; color:var(--ink); margin-bottom:22px; line-height:1.5;}
+
+  @media (prefers-reduced-motion: reduce){
+    .stamp{animation:none;}
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+
+  <div class="app-header">
+    <span class="role-tag">VISTA · OPERARIO DE PLANTA</span>
+    <h1 class="app-title">Registrar producción</h1>
+    <div class="app-date" id="header-date"></div>
+  </div>
+
+  <div class="view">
+    <div class="ticket ticket-top">
+      <div class="field">
+        <label>Categoría</label>
+        <div class="segmented" id="categoria-selector">
+          <button type="button" data-cat="terminado" class="active">Producto terminado</button>
+          <button type="button" data-cat="insumo">Insumo</button>
+          <button type="button" data-cat="otro">Otro</button>
+        </div>
+      </div>
+
+      <!-- ===== TERMINADO ===== -->
+      <div class="cat-group" data-cat-group="terminado">
+        <div class="field">
+          <label for="term-producto">Producto</label>
+          <select id="term-producto">
+            <option value="">Cargando…</option>
+          </select>
+        </div>
+      </div>
+      <div class="ticket" id="term-stock-card" style="display:none;">
+        <div class="prod-row">
+          <div>
+            <div class="metric" id="term-stock-valor">0</div>
+            <div class="metric-label">stock actual</div>
+          </div>
+          <span class="chip" id="term-meta-chip">meta: 0</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="term-bar" style="width:0%"></div></div>
+      </div>
+
+      <!-- ===== INSUMO ===== -->
+      <div class="cat-group" data-cat-group="insumo" style="display:none;">
+        <div class="field">
+          <label for="insumo-producto">Insumo</label>
+          <select id="insumo-producto">
+            <option value="">Cargando…</option>
+          </select>
+        </div>
+      </div>
+      <div class="ticket" id="insumo-stock-card" style="display:none;">
+        <div class="metric" id="insumo-stock-valor">0</div>
+        <div class="metric-label">stock actual</div>
+      </div>
+
+      <!-- ===== OTRO ===== -->
+      <div class="cat-group" data-cat-group="otro" style="display:none;">
+        <div class="field">
+          <label for="otro-producto">¿Qué se produjo?</label>
+          <input type="text" id="otro-producto" placeholder="Ej: masa madre">
+        </div>
+        <div class="field">
+          <label for="otro-unidad">Unidad</label>
+          <select id="otro-unidad"></select>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== CAMPOS COMUNES A LAS 3 CATEGORÍAS ===== -->
+    <div class="ticket ticket-top">
+      <div class="field">
+        <label id="cantidad-label" for="reg-cantidad">Cantidad producida</label>
+        <input type="number" id="reg-cantidad" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="field">
+        <label for="reg-merma">Merma (opcional)</label>
+        <p class="field-hint">De esa cantidad producida, ¿cuánto fue merma o se perdió? No se suma aparte.</p>
+        <input type="number" id="reg-merma" inputmode="decimal" placeholder="0">
+      </div>
+      <div class="field">
+        <label for="reg-fecha">Fecha</label>
+        <input type="date" id="reg-fecha">
+      </div>
+      <div class="field">
+        <label>Turno</label>
+        <div class="segmented" id="reg-turno">
+          <button type="button" data-turno="Mañana">Mañana</button>
+          <button type="button" data-turno="Tarde">Tarde</button>
+          <button type="button" data-turno="Noche">Noche</button>
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:0;">
+        <label for="reg-obs">Observaciones (opcional)</label>
+        <textarea id="reg-obs" placeholder="Ej: se cortó la línea 20 min"></textarea>
+      </div>
+    </div>
+
+    <div class="helper-error" id="reg-error" style="display:none;"></div>
+    <button class="cta-main" id="btn-registrar" disabled>Cargando…</button>
+  </div>
+
+  <div class="stamp-overlay" id="stamp-overlay">
+    <div class="stamp">
+      <div class="stamp-title" id="stamp-title">✓ LOTE GENERADO</div>
+      <div class="stamp-detail" id="stamp-detail"></div>
+      <button class="cta-main" id="stamp-close">Registrar otra</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  // ---------- estado ----------
+  var state = {
+    categoria: 'terminado',
+    terminadosPorSku: {},
+    insumosPorSku: {},
+    unidadesOtro: [],
+    cargado: false
+  };
+
+  function fmt(d){
+    return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
+  }
+  function fmtISO(d){
+    return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+  }
+  function turnoSugerido(){
+    var h = new Date().getHours();
+    if (h < 14) return 'Mañana';
+    if (h < 20) return 'Tarde';
+    return 'Noche';
+  }
+
+  // ---------- carga inicial: un solo viaje real al backend ----------
+  function initForm(datos){
+    state.cargado = true;
+
+    var selTerm = document.getElementById('term-producto');
+    selTerm.innerHTML = '<option value="">Elegí un producto…</option>';
+    datos.terminados.forEach(function(p){
+      state.terminadosPorSku[p.sku] = p;
+      var opt = document.createElement('option');
+      opt.value = p.sku;
+      opt.textContent = p.nombre;
+      selTerm.appendChild(opt);
+    });
+
+    var selInsumo = document.getElementById('insumo-producto');
+    selInsumo.innerHTML = '<option value="">Elegí un insumo…</option>';
+    datos.insumos.forEach(function(p){
+      state.insumosPorSku[p.sku] = p;
+      var opt = document.createElement('option');
+      opt.value = p.sku;
+      opt.textContent = p.nombre;
+      selInsumo.appendChild(opt);
+    });
+
+    state.unidadesOtro = datos.unidadesOtro || [];
+    var selUnidad = document.getElementById('otro-unidad');
+    selUnidad.innerHTML = state.unidadesOtro.map(function(u){ return '<option value="'+u+'">'+u+'</option>'; }).join('');
+
+    var btn = document.getElementById('btn-registrar');
+    btn.disabled = false;
+    btn.textContent = 'Registrar producción';
+  }
+
+  function onCargaFatal(err){
+    var btn = document.getElementById('btn-registrar');
+    btn.disabled = true;
+    btn.textContent = 'No se pudo cargar';
+    var errBox = document.getElementById('reg-error');
+    errBox.style.display = 'block';
+    errBox.textContent = '❌ ' + (err && err.message ? err.message : 'No se pudo conectar con la planilla. Recargá la página.');
+  }
+
+  google.script.run.withSuccessHandler(initForm).withFailureHandler(onCargaFatal).obtenerDatosFormularioProduccion();
+
+  // ---------- selector de categoría ----------
+  document.getElementById('categoria-selector').addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    state.categoria = btn.dataset.cat;
+
+    document.querySelectorAll('#categoria-selector button').forEach(function(b){
+      b.classList.toggle('active', b === btn);
+    });
+    document.querySelectorAll('.cat-group').forEach(function(g){
+      g.style.display = (g.dataset.catGroup === state.categoria) ? '' : 'none';
+    });
+
+    document.getElementById('term-stock-card').style.display = 'none';
+    document.getElementById('insumo-stock-card').style.display = 'none';
+
+    var label = document.getElementById('cantidad-label');
+    label.textContent = state.categoria === 'otro' ? 'Cantidad producida' : 'Cantidad producida';
+
+    document.getElementById('reg-error').style.display = 'none';
+  });
+
+  // ---------- mostrar stock real al elegir producto/insumo ----------
+  function estadoStock(stock, meta){
+    var pct = meta > 0 ? Math.min(100, Math.round((stock / meta) * 100)) : 0;
+    var estado = pct >= 100 ? 'cumplido' : pct >= 50 ? 'atento' : 'urgente';
+    return { pct: pct, estado: estado };
+  }
+
+  document.getElementById('term-producto').addEventListener('change', function(e){
+    var card = document.getElementById('term-stock-card');
+    var p = state.terminadosPorSku[e.target.value];
+    var label = document.getElementById('cantidad-label');
+    label.textContent = p && p.unidadProduccion ? 'Cantidad producida (' + p.unidadProduccion + ')' : 'Cantidad producida';
+    if (!p) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    document.getElementById('term-stock-valor').textContent = p.stock;
+    document.getElementById('term-meta-chip').textContent = 'meta: ' + p.metaSemanal;
+
+    var r = estadoStock(p.stock, p.metaSemanal);
+    var metric = document.getElementById('term-stock-valor');
+    metric.className = 'metric ' + r.estado;
+    var chip = document.getElementById('term-meta-chip');
+    chip.className = 'chip chip--' + r.estado;
+    var bar = document.getElementById('term-bar');
+    bar.className = 'bar-fill ' + r.estado;
+    bar.style.width = r.pct + '%';
+  });
+
+  document.getElementById('insumo-producto').addEventListener('change', function(e){
+    var card = document.getElementById('insumo-stock-card');
+    var p = state.insumosPorSku[e.target.value];
+    if (!p) { card.style.display = 'none'; return; }
+    card.style.display = 'block';
+    document.getElementById('insumo-stock-valor').textContent = p.stock;
+  });
+
+  // ---------- turno ----------
+  document.getElementById('reg-turno').addEventListener('click', function(e){
+    var btn = e.target.closest('button');
+    if (!btn) return;
+    document.querySelectorAll('#reg-turno button').forEach(function(b){ b.classList.remove('active'); });
+    btn.classList.add('active');
+  });
+
+  // ---------- registrar ----------
+  function datosComunes(){
+    var turnoBtn = document.querySelector('#reg-turno button.active');
+    return {
+      cantidad: document.getElementById('reg-cantidad').value,
+      merma: document.getElementById('reg-merma').value,
+      fecha: document.getElementById('reg-fecha').value,
+      turno: turnoBtn ? turnoBtn.dataset.turno : 'Mañana',
+      observaciones: document.getElementById('reg-obs').value
+    };
+  }
+
+  function limpiarFormulario(){
+    document.getElementById('reg-cantidad').value = '';
+    document.getElementById('reg-merma').value = '';
+    document.getElementById('reg-obs').value = '';
+    document.getElementById('otro-producto').value = '';
+  }
+
+  document.getElementById('btn-registrar').addEventListener('click', function(){
+    if (!state.cargado) return;
+    var errBox = document.getElementById('reg-error');
+    errBox.style.display = 'none';
+
+    var comunes = datosComunes();
+    var llamada, datosEnvio, esLibre = false;
+
+    if (state.categoria === 'terminado' || state.categoria === 'insumo') {
+      var selId = state.categoria === 'terminado' ? 'term-producto' : 'insumo-producto';
+      var sku = document.getElementById(selId).value;
+      var item = state.categoria === 'terminado' ? state.terminadosPorSku[sku] : state.insumosPorSku[sku];
+      if (!item) {
+        errBox.style.display = 'block';
+        errBox.textContent = 'Elegí un ' + (state.categoria === 'terminado' ? 'producto' : 'insumo') + ' para continuar';
+        return;
+      }
+      datosEnvio = Object.assign({ producto: item.nombre, variante: '' }, comunes);
+      llamada = 'registrarProduccion';
+    } else {
+      var nombreLibre = document.getElementById('otro-producto').value.trim();
+      var unidad = document.getElementById('otro-unidad').value;
+      if (!nombreLibre) {
+        errBox.style.display = 'block';
+        errBox.textContent = 'Escribí qué se produjo';
+        return;
+      }
+      datosEnvio = Object.assign({ producto: nombreLibre, unidad: unidad }, comunes);
+      llamada = 'registrarProduccionLibre';
+      esLibre = true;
+    }
+
+    var btn = document.getElementById('btn-registrar');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    function onResultado(res){
+      btn.disabled = false;
+      btn.textContent = 'Registrar producción';
+
+      if (!res.ok) {
+        errBox.style.display = 'block';
+        errBox.textContent = res.mensaje;
+        return;
+      }
+
+      // si vino stock actualizado (categorías con SKU), lo reflejamos sin
+      // esperar a un nuevo viaje al servidor
+      if (!esLibre && res.stockActual !== undefined) {
+        var mapa = state.categoria === 'terminado' ? state.terminadosPorSku : state.insumosPorSku;
+        if (mapa[res.sku]) mapa[res.sku].stock = res.stockActual;
+      }
+
+      var detalle = res.lote + '<br>' + res.producto + ' · ' + res.cantidad + (res.unidad ? ' ' + res.unidad : '') + '<br>' + res.fecha;
+      document.getElementById('stamp-detail').innerHTML = detalle;
+      document.getElementById('stamp-overlay').classList.add('show');
+
+      limpiarFormulario();
+      // refresca la tarjeta de stock si el producto elegido sigue siendo el mismo
+      var evt = new Event('change');
+      if (state.categoria === 'terminado') document.getElementById('term-producto').dispatchEvent(evt);
+      if (state.categoria === 'insumo') document.getElementById('insumo-producto').dispatchEvent(evt);
+    }
+
+    function onError(err){
+      btn.disabled = false;
+      btn.textContent = 'Registrar producción';
+      errBox.style.display = 'block';
+      errBox.textContent = '❌ ' + (err && err.message ? err.message : 'Error inesperado del servidor');
+    }
+
+    google.script.run.withSuccessHandler(onResultado).withFailureHandler(onError)[llamada](datosEnvio);
+  });
+
+  document.getElementById('stamp-close').addEventListener('click', function(){
+    document.getElementById('stamp-overlay').classList.remove('show');
+  });
+
+  // ---------- init ----------
+  document.getElementById('header-date').textContent = fmt(new Date());
+  document.getElementById('reg-fecha').value = fmtISO(new Date());
+  (function(){
+    var turnoDefault = turnoSugerido();
+    document.querySelectorAll('#reg-turno button').forEach(function(b){
+      b.classList.toggle('active', b.dataset.turno === turnoDefault);
+    });
+  })();
+</script>
+</body>
+</html>

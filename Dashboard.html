@@ -9,14 +9,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;700&display=swap');
 :root{--bg:#0f1117;--surface:#181c27;--card:#1e2335;--border:#2a3050;--accent:#4f8ef7;--accent2:#f7c84f;--accent3:#4fd9a0;--danger:#f76f6f;--purple:#b48ef7;--orange:#f79f4f;--text:#e8ecf4;--muted:#8891a8;--label:#c2c9d9}
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;min-height:100vh}
-.nav{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 26px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:200}
-.logo{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;white-space:nowrap}.logo span{color:var(--accent)}
-.tabs{display:flex;gap:2px;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:3px}
-.tab{padding:5px 14px;border-radius:5px;font-size:11.5px;font-weight:600;color:var(--muted);cursor:pointer;border:none;background:transparent;white-space:nowrap;transition:all .15s}
-.tab.on{background:var(--accent);color:#fff}
-.tab:hover:not(.on){color:var(--label);background:#1e2335}
-.toggle-wrap{margin-left:auto;display:flex;align-items:center;gap:9px}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:13px;min-height:100vh;display:flex}
+.sidebar{width:240px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);min-height:100vh;padding:16px 0;position:sticky;top:0;align-self:flex-start;height:100vh;overflow-y:auto}
+.sidebar-logo{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;padding:2px 20px 16px;border-bottom:1px solid var(--border);margin-bottom:10px}
+.sidebar-logo span{color:var(--accent)}
+.sidebar-group{margin-bottom:2px}
+.sidebar-group-btn{width:100%;text-align:left;padding:11px 20px;background:none;border:none;color:var(--label);font-size:12.5px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-family:inherit}
+.sidebar-group-btn:hover{background:var(--card)}
+.sidebar-group .chev{font-size:10px;color:var(--muted);transition:transform .15s}
+.sidebar-group.open .chev{transform:rotate(180deg)}
+.sidebar-sub{display:none;padding:2px 0 8px}
+.sidebar-group.open .sidebar-sub{display:block}
+.sidebar-item{display:block;width:100%;text-align:left;padding:8px 20px 8px 30px;background:none;border:none;border-left:2px solid transparent;color:var(--muted);font-size:12px;cursor:pointer;font-family:inherit}
+.sidebar-item:hover{color:var(--label);background:rgba(255,255,255,.02)}
+.sidebar-item.on{color:var(--accent);border-left-color:var(--accent);background:rgba(79,142,247,.08);font-weight:600}
+.content-area{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 26px;display:flex;justify-content:flex-end;position:sticky;top:0;z-index:200}
+.toggle-wrap{display:flex;align-items:center;gap:9px}
 .toggle-label{font-size:11px;color:var(--muted);line-height:1.4}.toggle-label b{color:var(--label)}
 .tog{position:relative;width:42px;height:22px;cursor:pointer;flex-shrink:0}
 .tog input{opacity:0;width:0;height:0;position:absolute}
@@ -26,8 +35,24 @@ body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-
 .tog input:checked+.tog-sl::before{transform:translateX(20px);background:#fff}
 .badge{padding:2px 9px;border-radius:20px;font-size:10.5px;font-weight:700;background:rgba(247,159,79,.15);color:var(--orange)}
 .badge.on{background:rgba(79,142,247,.15);color:var(--accent)}
-main{max-width:1380px;margin:0 auto;padding:20px 26px}
+main{max-width:1380px;margin:0 auto;padding:20px 26px;width:100%}
 .sec{display:none}.sec.on{display:block}
+.cfg-lock{text-align:center;padding:60px 20px;color:var(--muted)}
+.cfg-lock p{margin-bottom:14px;font-size:13px}
+.cfg-menu{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:20px}
+.cfg-tile{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;cursor:pointer;transition:border-color .15s}
+.cfg-tile:hover{border-color:var(--accent)}
+.cfg-tile.soon{opacity:.5;cursor:default}
+.cfg-tile.soon:hover{border-color:var(--border)}
+.cfg-tile-title{font-weight:600;font-size:13px;margin-bottom:4px}
+.cfg-tile-sub{font-size:11px;color:var(--muted)}
+.cfg-back{background:none;border:none;color:var(--accent);font-size:12px;cursor:pointer;margin-bottom:14px;padding:0;font-family:inherit}
+.cfg-table{width:100%;border-collapse:collapse}
+.cfg-table th{text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--border)}
+.cfg-table td{padding:7px 10px;border-bottom:1px solid var(--border);font-size:12.5px}
+.cfg-table input{width:90px;background:#0f1117;border:1px solid var(--border);border-radius:6px;padding:5px 8px;color:var(--text);font-family:inherit;font-size:12px}
+.cfg-table input.grid-day{width:56px;text-align:center}
+.btn{border:none;border-radius:8px;padding:10px 18px;font-size:12.5px;font-weight:600;cursor:pointer;font-family:inherit}
 .kpis{display:grid;grid-template-columns:repeat(5,1fr);gap:11px;margin-bottom:18px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:15px 17px;position:relative;overflow:hidden}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--kc,var(--accent))}
@@ -91,27 +116,75 @@ table .eerr-total td:first-child{text-align:left;padding-left:12px}
 </style>
 </head>
 <body>
-<div class="nav">
-  <div class="logo">AÑAÑAI <span>·</span> Ventas & Cobros</div>
-  <div class="tabs">
-    <button class="tab on" data-tab="fin">💰 Financiero</button>
-    <button class="tab" data-tab="cxc">📋 CXC por cliente</button>
-    <button class="tab" data-tab="stats">📊 Estadísticas</button>
-    <button class="tab" data-tab="tabla">🗂 Tabla</button>
-    <button class="tab" data-tab="eerr">📊 EERR</button>
-    <button class="tab" data-tab="gastos">💸 Gastos</button>
+<div class="sidebar">
+  <div class="sidebar-logo">AÑAÑAI <span>·</span> Sistema</div>
+
+  <div class="sidebar-group open" id="grp-dashboard">
+    <button class="sidebar-group-btn" onclick="toggleGroup('grp-dashboard')">📊 Dashboard Ventas y Finanzas <span class="chev">▾</span></button>
+    <div class="sidebar-sub">
+      <button class="sidebar-item on" data-tab="inicio">Inicio</button>
+      <button class="sidebar-item" data-tab="fin">Financiero</button>
+      <button class="sidebar-item" data-tab="cxc">CXC por cliente</button>
+      <button class="sidebar-item" data-tab="stats">Estadísticas</button>
+      <button class="sidebar-item" data-tab="tabla">Tabla</button>
+      <button class="sidebar-item" data-tab="eerr">EERR</button>
+      <button class="sidebar-item" data-tab="gastos">Gastos</button>
+    </div>
   </div>
-  <div class="toggle-wrap">
-    <div class="toggle-label"><b>Incluir Añañai</b><br>(consumo interno)</div>
-    <label class="tog"><input type="checkbox" id="togAnanai"><span class="tog-sl"></span></label>
-    <span class="badge" id="togBadge">Sin Añañai</span>
+
+  <div class="sidebar-group" id="grp-audprod">
+    <button class="sidebar-group-btn" onclick="toggleGroup('grp-audprod')">🔍 Auditoría Producción <span class="chev">▾</span></button>
+    <div class="sidebar-sub">
+      <button class="sidebar-item" data-tab="audprod">Comparar día vs. plan</button>
+    </div>
+  </div>
+
+  <div class="sidebar-group" id="grp-config">
+    <button class="sidebar-group-btn" onclick="toggleGroup('grp-config')">⚙️ Configuración <span class="chev">▾</span></button>
+    <div class="sidebar-sub">
+      <button class="sidebar-item" data-tab="config">Abrir Configuración</button>
+    </div>
   </div>
 </div>
 
+<div class="content-area">
+  <div class="topbar">
+    <div class="toggle-wrap">
+      <div class="toggle-label"><b>Incluir Añañai</b><br>(consumo interno)</div>
+      <label class="tog"><input type="checkbox" id="togAnanai"><span class="tog-sl"></span></label>
+      <span class="badge" id="togBadge">Sin Añañai</span>
+    </div>
+  </div>
+
 <main>
 
+<!-- ══ INICIO ══ -->
+<div class="sec on" id="sec-inicio">
+  <div class="ct" style="font-size:15px">Métricas semanales</div>
+  <div class="cs" id="ini-semana-label">—</div>
+  <div class="kpis" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi g" id="ini-card-ventas" style="cursor:pointer">
+      <div class="kl">Ventas</div><div class="kv" id="ini-ventas">—</div><div class="ks" id="ini-ventas-sub">—</div>
+    </div>
+    <div class="kpi p" id="ini-card-margen" style="cursor:pointer">
+      <div class="kl">Margen prom. ponderado</div><div class="kv" id="ini-margen">—</div><div class="ks" id="ini-margen-sub">—</div>
+    </div>
+    <div class="kpi y" id="ini-card-cobros" style="cursor:pointer">
+      <div class="kl">Cobros de la semana</div><div class="kv" id="ini-cobros">—</div><div class="ks" id="ini-cobros-sub">—</div>
+    </div>
+    <div class="kpi r" id="ini-card-gastos" style="cursor:pointer">
+      <div class="kl">Gastos</div><div class="kv" id="ini-gastos">—</div><div class="ks" id="ini-gastos-sub">—</div>
+    </div>
+  </div>
+  <div class="card" id="ini-detWrap" style="display:none;margin-top:4px">
+    <div class="ct" id="ini-detTitle">—</div>
+    <div class="cs" id="ini-detSub">—</div>
+    <table id="ini-detTbl"></table>
+  </div>
+</div>
+
 <!-- ══ FINANCIERO ══ -->
-<div class="sec on" id="sec-fin">
+<div class="sec" id="sec-fin">
   <div class="fbar">
     <span class="fl">Período:</span>
     <input type="date" class="date-input" id="finDesde">
@@ -322,7 +395,189 @@ table .eerr-total td:first-child{text-align:left;padding-left:12px}
   </div></div>
 </div>
 
+<!-- ══ AUDITORÍA PRODUCCIÓN ══ -->
+<div class="sec" id="sec-audprod">
+  <div class="ct" style="font-size:15px">Auditoría de Producción — plan vs. real</div>
+  <div class="cs">Compará lo que se planificó producir cada día contra lo que realmente se cargó. Los productos sin plan ese día no cuentan ni a favor ni en contra.</div>
+
+  <div style="margin:16px 0">
+    <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Día a revisar</label>
+    <select id="audprod-fecha" onchange="renderDiaAuditoria()" style="background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:inherit;min-width:230px">
+      <option value="">— Sin datos de producción todavía —</option>
+    </select>
+  </div>
+
+  <div class="kpis" style="grid-template-columns:repeat(2,1fr);max-width:620px;margin-bottom:22px">
+    <div class="kpi g">
+      <div class="kl">Rendimiento del día</div>
+      <div class="kv" id="audprod-rendimiento">—</div>
+      <div class="ks" id="audprod-rendimiento-sub">—</div>
+    </div>
+    <div class="kpi p">
+      <div class="kl">Avance meta semanal</div>
+      <div class="kv" id="audprod-avance">—</div>
+      <div class="ks" id="audprod-avance-sub">—</div>
+    </div>
+  </div>
+
+  <div class="ct" style="font-size:13px;margin-bottom:8px">Plan vs. real, por producto</div>
+  <table class="cfg-table" style="margin-bottom:26px"><thead><tr><th>Producto</th><th>Planificado</th><th>Producido</th><th>Estado</th></tr></thead><tbody id="audprod-tabla"></tbody></table>
+
+  <div class="ct" style="font-size:13px;margin-bottom:8px">Detalle de cargas ese día</div>
+  <table class="cfg-table"><thead><tr><th>Hora</th><th>Producto</th><th>Cantidad</th><th>Detalle</th><th>Usuario</th></tr></thead><tbody id="audprod-detalle"></tbody></table>
+</div>
+
+<!-- ══ CONFIGURACIÓN ══ -->
+<div class="sec" id="sec-config">
+  <div id="cfg-lock" class="cfg-lock">
+    <p>🔒 Sección protegida — ingresá el PIN para continuar.</p>
+    <button class="btn" onclick="cfgPedirPin()">Ingresar PIN</button>
+  </div>
+
+  <div id="cfg-content" style="display:none">
+
+    <!-- Menú principal de Configuración -->
+    <div id="cfg-view-menu">
+      <div class="ct" style="font-size:15px;margin-bottom:14px">Configuración</div>
+      <div class="cfg-menu">
+        <div class="cfg-tile" onclick="cfgIr('metasProd')"><div class="cfg-tile-title">🎯 Metas de producción semanal</div><div class="cfg-tile-sub">Cuánto se espera producir de cada producto por semana</div></div>
+        <div class="cfg-tile" onclick="cfgIr('planSemanal')"><div class="cfg-tile-title">📅 Distribución diaria</div><div class="cfg-tile-sub">Repartir la meta semanal en los 7 días</div></div>
+        <div class="cfg-tile" onclick="cfgIr('metaVentas')"><div class="cfg-tile-title">📈 Meta de ventas mensual</div><div class="cfg-tile-sub">Objetivo de facturación y costos fijos esperados</div></div>
+        <div class="cfg-tile" onclick="cfgIr('cvu')"><div class="cfg-tile-title">💰 Costo variable unitario (CVU)</div><div class="cfg-tile-sub">Costo por producto, usado en margen y capital inmovilizado</div></div>
+        <div class="cfg-tile" onclick="cfgIr('pin')"><div class="cfg-tile-title">🔑 PIN de acceso</div><div class="cfg-tile-sub">Cambiar el PIN de Correcciones, Auditoría y Configuración</div></div>
+        <div class="cfg-tile" onclick="cfgIr('clienteNuevo')"><div class="cfg-tile-title">👤 Cliente nuevo</div><div class="cfg-tile-sub">Agregar un cliente al sistema</div></div>
+        <div class="cfg-tile" onclick="cfgIr('proveedorNuevo')"><div class="cfg-tile-title">🏭 Proveedor nuevo</div><div class="cfg-tile-sub">Agregar un proveedor al sistema</div></div>
+        <div class="cfg-tile" onclick="cfgIr('actualizarPrecio')"><div class="cfg-tile-title">💲 Actualizar precio</div><div class="cfg-tile-sub">Precio Libre y P1 por producto</div></div>
+        <div class="cfg-tile soon"><div class="cfg-tile-title">🔐 Permisos por usuario</div><div class="cfg-tile-sub">🚧 En construcción — pantallas por clave según usuario</div></div>
+        <div class="cfg-tile soon"><div class="cfg-tile-title">📦 Nuevo producto / SKU</div><div class="cfg-tile-sub">🚧 Próximamente</div></div>
+        <div class="cfg-tile soon"><div class="cfg-tile-title">🧪 Ingredientes por producto</div><div class="cfg-tile-sub">🚧 Próximamente — a diseñar aparte</div></div>
+        <div class="cfg-tile soon"><div class="cfg-tile-title">🏷️ Taxonomía de gastos / Cajas</div><div class="cfg-tile-sub">🚧 Próximamente</div></div>
+      </div>
+    </div>
+
+    <!-- Metas de producción semanal -->
+    <div id="cfg-view-metasProd" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Metas de producción semanal</div>
+      <div class="cs">Cuánto se espera producir de cada producto por semana. Alimenta la alerta de stock bajo y, a futuro, el cumplimiento diario.</div>
+      <table class="cfg-table" style="margin-top:10px"><thead><tr><th>Producto</th><th>SKU</th><th>Meta semanal</th></tr></thead><tbody id="cfg-metasProd-body"></tbody></table>
+      <button class="btn" style="margin-top:14px;background:var(--go,var(--accent));color:#fff" onclick="cfgGuardarMetasProd()">💾 Guardar metas</button>
+    </div>
+
+    <!-- Distribución diaria -->
+    <div id="cfg-view-planSemanal" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Distribución diaria — semana del <span id="cfg-plan-semana-label">—</span>
+        <button class="cfg-back" style="margin:0 6px 0 10px" onclick="cfgCambiarSemanaPlan(-1)">◀ Semana anterior</button>
+        <button class="cfg-back" style="margin:0" onclick="cfgCambiarSemanaPlan(1)">Semana siguiente ▶</button>
+      </div>
+      <div class="cs">Repartí la meta semanal de cada producto entre los 7 días. La suma de los días se compara en vivo contra la meta.</div>
+      <div style="overflow-x:auto;margin-top:10px">
+      <table class="cfg-table"><thead><tr><th>Producto</th><th>Meta sem.</th><th>Sáb</th><th>Dom</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Suma</th></tr></thead><tbody id="cfg-plan-body"></tbody></table>
+      </div>
+      <button class="btn" style="margin-top:14px;background:var(--accent);color:#fff" onclick="cfgGuardarPlan()">💾 Guardar distribución</button>
+    </div>
+
+    <!-- Meta de ventas mensual -->
+    <div id="cfg-view-metaVentas" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Meta de ventas mensual</div>
+      <div class="cs">Alimenta el objetivo y el punto de equilibrio del Dashboard.</div>
+      <div class="card" style="max-width:360px;margin-top:12px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Objetivo de ventas mensual ($)</label>
+        <input type="number" id="cfg-mv-objetivo" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit;margin-bottom:14px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Costos fijos esperados ($/mes)</label>
+        <input type="number" id="cfg-mv-cf" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit">
+      </div>
+      <button class="btn" style="margin-top:14px;background:var(--accent);color:#fff" onclick="cfgGuardarMetaVentas()">💾 Guardar</button>
+    </div>
+
+    <!-- CVU -->
+    <div id="cfg-view-cvu" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Costo variable unitario (CVU)</div>
+      <div class="cs">Se usa para calcular el margen y el capital inmovilizado. "Variante" queda vacío salvo para Tartines/Pizzas (alto/bajo).</div>
+      <table class="cfg-table" style="margin-top:10px"><thead><tr><th>Producto</th><th>Variante</th><th>CVU ($)</th><th>Descripción</th></tr></thead><tbody id="cfg-cvu-body"></tbody></table>
+      <button class="btn" style="margin-top:14px;background:var(--accent);color:#fff" onclick="cfgGuardarCVU()">💾 Guardar CVU</button>
+    </div>
+
+    <!-- Cliente nuevo -->
+    <div id="cfg-view-clienteNuevo" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Cliente nuevo</div>
+      <div class="cs">Se agrega al maestro de clientes y queda disponible en Despacho/Cobro.</div>
+      <div class="card" style="max-width:380px;margin-top:12px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Nombre</label>
+        <input type="text" id="cfg-cli-nombre" placeholder="Nombre del cliente" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit;margin-bottom:14px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Condición</label>
+        <select id="cfg-cli-condicion" onchange="document.getElementById('cfg-cli-dias-wrap').style.display=this.value==='Crédito'?'block':'none'" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit;margin-bottom:14px">
+          <option value="Crédito">Crédito</option><option value="Contado">Contado</option>
+        </select>
+        <div id="cfg-cli-dias-wrap">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Días de crédito</label>
+          <input type="number" id="cfg-cli-dias" placeholder="30" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit">
+        </div>
+      </div>
+      <button class="btn" style="margin-top:14px;background:var(--accent);color:#fff" onclick="cfgGuardarCliente()">💾 Agregar cliente</button>
+    </div>
+
+    <!-- Proveedor nuevo -->
+    <div id="cfg-view-proveedorNuevo" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Proveedor nuevo</div>
+      <div class="cs">Se agrega al maestro y queda disponible en Gastos/Pagos.</div>
+      <div class="card" style="max-width:380px;margin-top:12px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Nombre</label>
+        <input type="text" id="cfg-prov-nombre" placeholder="Nombre del proveedor" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit;margin-bottom:14px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Condición default</label>
+        <select id="cfg-prov-condicion" onchange="document.getElementById('cfg-prov-dias-wrap').style.display=this.value==='Cuenta corriente'?'block':'none'" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit;margin-bottom:14px">
+          <option value="Contado">Contado</option><option value="Cuenta corriente">Cuenta corriente</option>
+        </select>
+        <div id="cfg-prov-dias-wrap" style="display:none">
+          <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Días estimados de pago</label>
+          <input type="number" id="cfg-prov-dias" placeholder="7, 15, 30…" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit">
+        </div>
+      </div>
+      <button class="btn" style="margin-top:14px;background:var(--accent);color:#fff" onclick="cfgGuardarProveedor()">💾 Agregar proveedor</button>
+    </div>
+
+    <!-- Actualizar precio -->
+    <div id="cfg-view-actualizarPrecio" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Actualizar precio</div>
+      <div class="cs">PLibre = precio base · P1 = precio si el cliente acumula +400 u./mes.</div>
+      <div class="card" style="max-width:420px;margin-top:12px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Producto</label>
+        <select id="cfg-precio-prod" onchange="cfgOnProdPrecio()" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit;margin-bottom:14px">
+          <option value="">— Cargando… —</option>
+        </select>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Precio Libre ($)</label>
+          <input type="number" id="cfg-precio-plibre" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit"></div>
+          <div><label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">Precio P1 ($)</label>
+          <input type="number" id="cfg-precio-p1" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit"></div>
+        </div>
+      </div>
+      <button class="btn" style="margin-top:14px;background:var(--accent);color:#fff" onclick="cfgGuardarPrecio()">💾 Actualizar precio</button>
+    </div>
+
+    <!-- PIN -->
+    <div id="cfg-view-pin" style="display:none">
+      <button class="cfg-back" onclick="cfgVolver()">← Volver a Configuración</button>
+      <div class="ct">Cambiar PIN de acceso</div>
+      <div class="cs">Este PIN protege Correcciones, Auditoría semanal y toda esta sección de Configuración.</div>
+      <div class="card" style="max-width:320px;margin-top:12px">
+        <label style="font-size:11px;color:var(--muted);display:block;margin-bottom:6px">PIN nuevo</label>
+        <input type="text" id="cfg-pin-nuevo" style="width:100%;background:#0f1117;border:1px solid var(--border);border-radius:8px;padding:9px 10px;color:var(--text);font-family:inherit">
+      </div>
+      <button class="btn" style="margin-top:14px;background:var(--accent);color:#fff" onclick="cfgGuardarPin()">💾 Cambiar PIN</button>
+    </div>
+
+  </div>
+</div>
+
 </main>
+</div>
 
 <script>
 var RAW  = JSON.parse('<?= datos ?>');
@@ -408,7 +663,7 @@ function inRange(f, key){
 
 // ── STATE ─────────────────────────────────────────────────────────
 var inclAn = false;
-var tab = 'fin';
+var tab = 'inicio';
 var cxcBaseMode = 'total'; // 'total' o 'credito'
 var sProd = '', tCli = '', tProd = '', tEst = 'all';
 var chSem, chMix, chProd, chTend, chCli, chGasCat, chGasSub, chGasFV;
@@ -483,14 +738,454 @@ function poblarMeses(){
 // ── TABS ──────────────────────────────────────────────────────────
 function goTab(t){
   tab=t;
-  document.querySelectorAll('.tab').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
+  document.querySelectorAll('.sidebar-item').forEach(function(b){b.classList.toggle('on',b.dataset.tab===t);});
   document.querySelectorAll('.sec').forEach(function(s){s.classList.toggle('on',s.id==='sec-'+t);});
+  if(t==='inicio') renderInicio();
   if(t==='fin')   renderFin();
   if(t==='cxc')   renderCXC();
   if(t==='stats') renderStats();
   if(t==='tabla') renderTabla();
   if(t==='eerr')  renderEERR();
   if(t==='gastos') renderGastos();
+  if(t==='audprod') renderAuditoriaProduccion();
+}
+
+function toggleGroup(id){
+  document.getElementById(id).classList.toggle('open');
+}
+
+// ════════════════════════════════════════════════════════════════
+// AUDITORÍA DE PRODUCCIÓN — plan vs. real, día por día. Flexible a
+// propósito: no exige el número exacto de la grilla, un producto
+// "cumple" con el 80% o más de lo planificado ese día. Estos 2
+// números son los únicos que hay que tocar si se quiere afinar el
+// criterio más adelante.
+// ════════════════════════════════════════════════════════════════
+var UMBRAL_CUMPLIDO_DIA = 0.8;
+var UMBRAL_PARCIAL_DIA  = 0.5;
+var audprodData = null;
+
+// Convierte una "semana" (dd/MM del sábado, la misma clave que ya usa el
+// resto del sistema) en sus 7 fechas reales 'yyyy-MM-dd' (sáb..vie) —
+// necesario para que el selector muestre días planificados aunque
+// todavía no tengan ninguna producción cargada (ej: la semana en curso).
+function fechasDeSemana(semana){
+  var p = String(semana).split('/');
+  if (p.length !== 2) return [];
+  var dd = parseInt(p[0],10), mm = parseInt(p[1],10);
+  if (isNaN(dd) || isNaN(mm)) return [];
+  var yr = 2026;
+  try { if (typeof META !== 'undefined' && META && META.hoy) { var y = new Date(META.hoy).getFullYear(); if (y) yr = y; } } catch(e){}
+  var out = [];
+  for (var i = 0; i < 7; i++){
+    var d = new Date(yr, mm-1, dd);
+    d.setDate(d.getDate()+i);
+    out.push(d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2));
+  }
+  return out;
+}
+
+function renderAuditoriaProduccion(){
+  if (audprodData) { renderDiaAuditoria(); return; }
+  var sel = document.getElementById('audprod-fecha');
+  sel.innerHTML = '<option value="">Cargando…</option>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      audprodData = r;
+      var diasConMov = r.movimientos.map(function(m){ return m.fDia; });
+      var diasConPlan = [];
+      r.plan.forEach(function(p){
+        var fechas = fechasDeSemana(p.semana);
+        p.dias.forEach(function(v, idx){ if (v > 0 && fechas[idx]) diasConPlan.push(fechas[idx]); });
+      });
+      var dias = Array.from(new Set(diasConMov.concat(diasConPlan))).sort().reverse();
+      if (!dias.length) { sel.innerHTML = '<option value="">Sin datos de producción todavía</option>'; return; }
+      var hoyStr = (typeof META !== 'undefined' && META && META.hoy) ? META.hoy : '';
+      sel.innerHTML = dias.map(function(d){
+        var dd = new Date(d+'T00:00:00');
+        var label = dd.toLocaleDateString('es-AR',{weekday:'long',day:'2-digit',month:'2-digit'});
+        if (d > hoyStr) label += ' (planificado)';
+        return '<option value="'+d+'">'+label+'</option>';
+      }).join('');
+      renderDiaAuditoria();
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .getDatosAuditoria();
+}
+
+function audEstado(plan, producido){
+  if (!plan) return { label: '➖ Sin plan', color: 'var(--muted)' };
+  var pct = producido / plan;
+  if (pct >= UMBRAL_CUMPLIDO_DIA) return { label: '✅ Cumplido', color: 'var(--accent3)' };
+  if (pct >= UMBRAL_PARCIAL_DIA)  return { label: '⚠️ Parcial', color: 'var(--accent2)' };
+  return { label: '❌ Bajo', color: 'var(--danger)' };
+}
+
+function renderDiaAuditoria(){
+  if (!audprodData) return;
+  var fDia = document.getElementById('audprod-fecha').value;
+  if (!fDia) return;
+  var semana = semDeFecha(fDia); // mismo criterio sábado-inicio que el resto del sistema
+
+  var planSemana = {};
+  audprodData.plan.filter(function(p){ return p.semana === semana; }).forEach(function(p){ planSemana[p.sku] = p; });
+
+  var d = new Date(fDia+'T00:00:00');
+  var idxDia = (d.getDay()+1)%7; // [Sáb,Dom,Lun,Mar,Mié,Jue,Vie]
+
+  var movsDia = audprodData.movimientos.filter(function(m){ return m.fDia === fDia; });
+  var producidoDia = {};
+  movsDia.forEach(function(m){ producidoDia[m.sku] = (producidoDia[m.sku]||0) + m.cantidad; });
+
+  var inicioSemana = new Date(d); inicioSemana.setDate(inicioSemana.getDate() - idxDia);
+  var producidoSemana = 0;
+  audprodData.movimientos.forEach(function(m){
+    var fm = new Date(m.fDia+'T00:00:00');
+    if (fm >= inicioSemana && fm <= d) producidoSemana += m.cantidad;
+  });
+  var totalMetas = 0;
+  Object.keys(audprodData.metas).forEach(function(sku){ totalMetas += audprodData.metas[sku]||0; });
+
+  var skusRelevantes = {};
+  Object.keys(planSemana).forEach(function(sku){ if (planSemana[sku].dias[idxDia] > 0) skusRelevantes[sku] = true; });
+  Object.keys(producidoDia).forEach(function(sku){ skusRelevantes[sku] = true; });
+
+  var filas = Object.keys(skusRelevantes).map(function(sku){
+    var plan = planSemana[sku] ? planSemana[sku].dias[idxDia] : 0;
+    var producido = producidoDia[sku] || 0;
+    var movProp = movsDia.find(function(m){ return m.sku === sku; });
+    var nombre = (planSemana[sku] && planSemana[sku].producto) || (movProp && movProp.producto) || sku;
+    return { sku: sku, nombre: nombre, plan: plan, producido: producido };
+  }).sort(function(a,b){ return b.plan - a.plan; });
+
+  var conPlan = filas.filter(function(f){ return f.plan > 0; });
+  var rendimiento = conPlan.length
+    ? conPlan.reduce(function(s,f){ return s + Math.min(f.producido/f.plan, 1); }, 0) / conPlan.length
+    : null;
+
+  document.getElementById('audprod-rendimiento').textContent = rendimiento==null ? '—' : (rendimiento*100).toFixed(0)+'%';
+  document.getElementById('audprod-rendimiento-sub').textContent = conPlan.length ? conPlan.length+' producto(s) con plan ese día' : 'Ningún producto tenía plan ese día';
+
+  document.getElementById('audprod-avance').textContent = totalMetas>0 ? (producidoSemana/totalMetas*100).toFixed(0)+'%' : '—';
+  document.getElementById('audprod-avance-sub').textContent = 'Semana del '+semRango(semana)+' · '+producidoSemana+' de '+totalMetas+' u.';
+
+  var tbody = document.getElementById('audprod-tabla');
+  tbody.innerHTML = '';
+  if (!filas.length) { tbody.innerHTML = '<tr><td colspan="4" style="color:var(--muted)">Sin plan ni producción para este día</td></tr>'; }
+  filas.forEach(function(f){
+    var estado = audEstado(f.plan, f.producido);
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+f.nombre+'</td><td>'+(f.plan||'—')+'</td><td>'+f.producido+'</td>'+
+      '<td style="color:'+estado.color+';font-weight:600">'+estado.label+'</td>';
+    tbody.appendChild(tr);
+  });
+
+  var detBody = document.getElementById('audprod-detalle');
+  detBody.innerHTML = '';
+  if (!movsDia.length) { detBody.innerHTML = '<tr><td colspan="5" style="color:var(--muted)">Sin cargas ese día</td></tr>'; }
+  movsDia.slice().sort(function(a,b){ return a.f-b.f; }).forEach(function(m){
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td>'+m.hora+'</td><td>'+m.producto+'</td><td>'+m.cantidad+'</td>'+
+      '<td style="color:var(--muted);font-size:11px">'+m.detalle+'</td><td>'+(m.usuario||'—')+'</td>';
+    detBody.appendChild(tr);
+  });
+}
+
+// ════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN — PIN + navegación interna + las 5 pantallas
+// ════════════════════════════════════════════════════════════════
+var cfgPin = null;
+
+function cfgPedirPin(){
+  var intento = prompt('Ingresá el PIN de Configuración:');
+  if (intento === null || intento === '') return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (r && r.ok) {
+        cfgPin = intento;
+        document.getElementById('cfg-lock').style.display = 'none';
+        document.getElementById('cfg-content').style.display = 'block';
+      } else {
+        alert('PIN incorrecto.');
+      }
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .verificarPinCorrecciones(intento);
+}
+
+function cfgIr(vista){
+  document.getElementById('cfg-view-menu').style.display = 'none';
+  document.getElementById('cfg-view-'+vista).style.display = 'block';
+  if (vista === 'metasProd') cfgCargarMetasProd();
+  if (vista === 'planSemanal') cfgCargarPlan();
+  if (vista === 'metaVentas') cfgCargarMetaVentas();
+  if (vista === 'cvu') cfgCargarCVU();
+  if (vista === 'actualizarPrecio') cfgCargarActualizarPrecio();
+}
+
+function cfgVolver(){
+  ['metasProd','planSemanal','metaVentas','cvu','pin','clienteNuevo','proveedorNuevo','actualizarPrecio'].forEach(function(v){
+    document.getElementById('cfg-view-'+v).style.display = 'none';
+  });
+  document.getElementById('cfg-view-menu').style.display = 'block';
+}
+
+// ── Metas de producción semanal ──
+function cfgCargarMetasProd(){
+  var body = document.getElementById('cfg-metasProd-body');
+  body.innerHTML = '<tr><td colspan="3">Cargando…</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (!r.ok) { alert(r.mensaje); return; }
+      body.innerHTML = '';
+      r.items.forEach(function(it){
+        var tr = document.createElement('tr');
+        tr.innerHTML = '<td>'+it.nombre+'</td><td style="color:var(--muted)">'+it.sku+'</td>'+
+          '<td><input type="number" data-sku="'+it.sku+'" data-nombre="'+it.nombre+'" value="'+it.meta+'"></td>';
+        body.appendChild(tr);
+      });
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .getMetasProduccion(cfgPin);
+}
+
+function cfgGuardarMetasProd(){
+  var items = [];
+  document.querySelectorAll('#cfg-metasProd-body input').forEach(function(inp){
+    items.push({ sku: inp.dataset.sku, nombre: inp.dataset.nombre, meta: Number(inp.value)||0 });
+  });
+  google.script.run
+    .withSuccessHandler(function(r){ alert(r.mensaje); })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .guardarMetasProduccion(items, cfgPin);
+}
+
+// ── Distribución diaria ──
+var cfgPlanSemanaActual = null;
+
+function cfgCargarPlan(semana){
+  var body = document.getElementById('cfg-plan-body');
+  body.innerHTML = '<tr><td colspan="10">Cargando…</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (!r.ok) { alert(r.mensaje); return; }
+      cfgPlanSemanaActual = r.semana;
+      document.getElementById('cfg-plan-semana-label').textContent = r.semana + ' (' + semRango(r.semana) + ')';
+      body.innerHTML = '';
+      r.items.forEach(function(it){
+        var tr = document.createElement('tr');
+        var celdasDias = it.dias.map(function(v,i){
+          return '<td><input type="number" class="grid-day" data-sku="'+it.sku+'" data-dia="'+i+'" value="'+v+'" oninput="cfgActualizarSumaPlan(this)"></td>';
+        }).join('');
+        var sumaInicial = it.dias.reduce(function(s,v){return s+v;},0);
+        var colorInicial = (it.metaSemanal && sumaInicial !== it.metaSemanal) ? 'var(--danger)' : 'var(--accent3)';
+        tr.innerHTML = '<td>'+it.nombre+'</td><td style="color:var(--muted)">'+it.metaSemanal+'</td>'+celdasDias+
+          '<td id="cfg-suma-'+it.sku+'" style="font-weight:700;color:'+colorInicial+'">'+sumaInicial+'</td>';
+        tr.dataset.meta = it.metaSemanal;
+        tr.dataset.nombre = it.nombre;
+        body.appendChild(tr);
+      });
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .getPlanSemanal(semana || null, cfgPin);
+}
+
+// Navega a la semana anterior/siguiente (delta: -1 o 1) sin depender de la
+// fecha de "hoy" — soluciona el caso de entrar a esta pantalla y que la
+// semana con datos cargados ya no sea "la actual" para el sistema.
+function cfgCambiarSemanaPlan(delta){
+  var base = cfgPlanSemanaActual || cfgSemanaHoyStr();
+  var fechas = fechasDeSemana(base);
+  var sab = new Date(fechas[0]+'T00:00:00');
+  sab.setDate(sab.getDate() + delta*7);
+  var nuevaSemana = ('0'+sab.getDate()).slice(-2)+'/'+('0'+(sab.getMonth()+1)).slice(-2);
+  cfgCargarPlan(nuevaSemana);
+}
+
+function cfgSemanaHoyStr(){
+  try { return semDeFecha((typeof META!=='undefined' && META && META.hoy) || new Date().toISOString().slice(0,10)); }
+  catch(e){ return '01/01'; }
+}
+
+function cfgActualizarSumaPlan(input){
+  var sku = input.dataset.sku;
+  var fila = input.closest('tr');
+  var suma = 0;
+  fila.querySelectorAll('.grid-day').forEach(function(i){ suma += Number(i.value)||0; });
+  var celda = document.getElementById('cfg-suma-'+sku);
+  celda.textContent = suma;
+  var meta = Number(fila.dataset.meta)||0;
+  celda.style.color = (meta && suma !== meta) ? 'var(--danger)' : 'var(--accent3)';
+}
+
+function cfgGuardarPlan(){
+  var filas = document.querySelectorAll('#cfg-plan-body tr');
+  var items = [];
+  var semana = cfgPlanSemanaActual;
+  filas.forEach(function(tr){
+    var inputs = tr.querySelectorAll('.grid-day');
+    if (!inputs.length) return;
+    var sku = inputs[0].dataset.sku;
+    var dias = [];
+    inputs.forEach(function(i){ dias[Number(i.dataset.dia)] = Number(i.value)||0; });
+    items.push({ sku: sku, nombre: tr.dataset.nombre, dias: dias });
+  });
+  google.script.run
+    .withSuccessHandler(function(r){ alert(r.mensaje); })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .guardarPlanSemanal(semana, items, cfgPin);
+}
+
+// ── Meta de ventas mensual ──
+function cfgCargarMetaVentas(){
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (!r.ok) { alert(r.mensaje); return; }
+      document.getElementById('cfg-mv-objetivo').value = r.objetivo;
+      document.getElementById('cfg-mv-cf').value = r.cf;
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .getMetaVentasMensual(cfgPin);
+}
+function cfgGuardarMetaVentas(){
+  var obj = document.getElementById('cfg-mv-objetivo').value;
+  var cf = document.getElementById('cfg-mv-cf').value;
+  google.script.run
+    .withSuccessHandler(function(r){ alert(r.mensaje); })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .guardarMetaVentasMensual(obj, cf, cfgPin);
+}
+
+// ── CVU ──
+function cfgCargarCVU(){
+  var body = document.getElementById('cfg-cvu-body');
+  body.innerHTML = '<tr><td colspan="4">Cargando…</td></tr>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if (!r.ok) { alert(r.mensaje); return; }
+      body.innerHTML = '';
+      r.items.forEach(function(it){
+        var tr = document.createElement('tr');
+        tr.innerHTML =
+          '<td><input type="text" class="cfg-nombre" value="'+it.nombre+'" style="width:160px"></td>'+
+          '<td><input type="text" class="cfg-variante" value="'+it.variante+'" style="width:70px"></td>'+
+          '<td><input type="number" class="cfg-cvu" value="'+it.cvu+'"></td>'+
+          '<td><input type="text" class="cfg-desc" value="'+it.desc+'" style="width:200px"></td>';
+        body.appendChild(tr);
+      });
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .getCVUConfig(cfgPin);
+}
+function cfgGuardarCVU(){
+  var items = [];
+  document.querySelectorAll('#cfg-cvu-body tr').forEach(function(tr){
+    items.push({
+      nombre: tr.querySelector('.cfg-nombre').value,
+      variante: tr.querySelector('.cfg-variante').value,
+      cvu: Number(tr.querySelector('.cfg-cvu').value)||0,
+      desc: tr.querySelector('.cfg-desc').value
+    });
+  });
+  google.script.run
+    .withSuccessHandler(function(r){ alert(r.mensaje); })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .guardarCVUConfig(items, cfgPin);
+}
+
+// ── Cliente nuevo ──
+function cfgGuardarCliente(){
+  var nombre = document.getElementById('cfg-cli-nombre').value.trim();
+  if (!nombre) { alert('Completá el nombre.'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      alert(r.mensaje);
+      if (r.ok) {
+        document.getElementById('cfg-cli-nombre').value = '';
+        document.getElementById('cfg-cli-dias').value = '';
+      }
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .guardarClienteNuevo({
+      nombre: nombre,
+      condicion: document.getElementById('cfg-cli-condicion').value,
+      diasCred: document.getElementById('cfg-cli-dias').value
+    });
+}
+
+// ── Proveedor nuevo ──
+function cfgGuardarProveedor(){
+  var nombre = document.getElementById('cfg-prov-nombre').value.trim();
+  if (!nombre) { alert('Completá el nombre.'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){
+      alert(r.mensaje);
+      if (r.ok) {
+        document.getElementById('cfg-prov-nombre').value = '';
+        document.getElementById('cfg-prov-dias').value = '';
+      }
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .guardarProveedorNuevo({
+      nombre: nombre,
+      condicion: document.getElementById('cfg-prov-condicion').value,
+      diasPago: document.getElementById('cfg-prov-dias').value
+    });
+}
+
+// ── Actualizar precio ──
+function cfgCargarActualizarPrecio(){
+  var sel = document.getElementById('cfg-precio-prod');
+  sel.innerHTML = '<option value="">— Cargando… —</option>';
+  google.script.run
+    .withSuccessHandler(function(productos){
+      sel.innerHTML = '<option value="">— Seleccioná —</option>';
+      productos.forEach(function(p){
+        var label = p.nombre + (p.variante ? ' — '+p.variante : '');
+        var opt = document.createElement('option');
+        opt.value = label;
+        opt.textContent = label + (p.tienePrecio ? '' : ' ⚠ sin precio');
+        opt.dataset.nombre = p.nombre; opt.dataset.var = p.variante || '';
+        opt.dataset.plibre = p.pLibre || ''; opt.dataset.p1 = p.p1 || '';
+        sel.appendChild(opt);
+      });
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .getProductos();
+}
+
+function cfgOnProdPrecio(){
+  var sel = document.getElementById('cfg-precio-prod');
+  var opt = sel.options[sel.selectedIndex];
+  document.getElementById('cfg-precio-plibre').value = opt.dataset.plibre || '';
+  document.getElementById('cfg-precio-p1').value = opt.dataset.p1 || '';
+}
+
+function cfgGuardarPrecio(){
+  var sel = document.getElementById('cfg-precio-prod');
+  var opt = sel.options[sel.selectedIndex];
+  if (!sel.value) { alert('Elegí un producto.'); return; }
+  google.script.run
+    .withSuccessHandler(function(r){ alert(r.mensaje); })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .actualizarPrecio({
+      producto: opt.dataset.nombre, variante: opt.dataset.var,
+      pLibre: document.getElementById('cfg-precio-plibre').value,
+      p1: document.getElementById('cfg-precio-p1').value
+    });
+}
+
+// ── PIN ──
+function cfgGuardarPin(){
+  var nuevo = document.getElementById('cfg-pin-nuevo').value;
+  if (!confirm('¿Confirmás cambiar el PIN? Vas a necesitar el nuevo la próxima vez que entres a Correcciones, Auditoría o Configuración.')) return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      alert(r.mensaje);
+      if (r.ok) { cfgPin = nuevo; document.getElementById('cfg-pin-nuevo').value=''; }
+    })
+    .withFailureHandler(function(e){ alert('Error: '+e.message); })
+    .cambiarPinCorrecciones(cfgPin, nuevo);
 }
 
 // ── TOGGLE AÑAÑAI ─────────────────────────────────────────────────
@@ -503,11 +1198,127 @@ document.getElementById('togAnanai').addEventListener('change',function(){
 });
 
 function renderAll(){
+  if(tab==='inicio')renderInicio();
   if(tab==='fin')   renderFin();
   if(tab==='cxc')   renderCXC();
   if(tab==='stats') renderStats();
   if(tab==='tabla') renderTabla();
   if(tab==='gastos') renderGastos();
+}
+
+// ════════════════════════════════════════════════════════════════
+// INICIO — 4 métricas semanales + acumulado del mes, con detalle
+// desplegable al hacer clic (movimientos individuales de la semana;
+// en Margen, ranking de productos vendidos con su margen).
+// ════════════════════════════════════════════════════════════════
+var iniAbierto = null;
+var iniData = { desSem: [], gasSem: [], cobSem: [] };
+
+function fFmt(f){ return f ? f.slice(8,10)+'/'+f.slice(5,7) : '—'; }
+
+function renderInicio(){
+  // semDeFecha() ya existe más abajo y ahora coincide con el criterio del
+  // servidor (_semLabel, sábado→viernes) — no hace falta duplicar la lógica.
+  var semActual = semDeFecha(META.hoy);
+  var mesActual = mesCorriente();
+
+  var desSem = desFiltered().filter(function(r){ return r.sem === semActual; });
+  var desMes = desFiltered().filter(function(r){ return r.m === mesActual; });
+  var gasSem = gasFiltered().filter(function(g){ return g.sem === semActual; });
+  var gasMes = gasFiltered().filter(function(g){ return g.m === mesActual; });
+  var cobSem = allCob().filter(function(c){ return semDeFecha(c.f) === semActual; });
+  var cobMes = allCob().filter(function(c){ return mesDeFecha(c.f) === mesActual; });
+
+  var eSem = calcEERR(desSem, gasSem);
+  var eMes = calcEERR(desMes, gasMes);
+
+  var cobrosSemTot = cobSem.reduce(function(s,c){return s+(c.neto||c.mt||0);},0);
+  var cobrosMesTot = cobMes.reduce(function(s,c){return s+(c.neto||c.mt||0);},0);
+  // Gastos: se suma TODO, incluido CAPEX si lo hubo esa semana/mes.
+  var gastosSemTot = gasSem.reduce(function(s,g){return s+(g.mt||0);},0);
+  var gastosMesTot = gasMes.reduce(function(s,g){return s+(g.mt||0);},0);
+
+  document.getElementById('ini-semana-label').textContent = 'Semana del ' + semRango(semActual) + ' · acumulado de ' + mesLabel(mesActual);
+  document.getElementById('ini-ventas').textContent    = fmtM(eSem.fact);
+  document.getElementById('ini-ventas-sub').textContent= 'Acum. mes: ' + fmtM(eMes.fact);
+  document.getElementById('ini-margen').textContent    = eSem.fact>0 ? (eSem.mcPct*100).toFixed(1)+'%' : '—';
+  document.getElementById('ini-margen-sub').textContent= 'Acum. mes: ' + (eMes.fact>0 ? (eMes.mcPct*100).toFixed(1)+'%' : '—');
+  document.getElementById('ini-cobros').textContent    = fmtM(cobrosSemTot);
+  document.getElementById('ini-cobros-sub').textContent= 'Acum. mes: ' + fmtM(cobrosMesTot);
+  document.getElementById('ini-gastos').textContent    = fmtM(gastosSemTot);
+  document.getElementById('ini-gastos-sub').textContent= 'Acum. mes: ' + fmtM(gastosMesTot);
+
+  iniData = { desSem: desSem, gasSem: gasSem, cobSem: cobSem };
+  renderIniDetalle();
+}
+
+function toggleIniDetalle(tipo){
+  iniAbierto = (iniAbierto === tipo) ? null : tipo;
+  renderIniDetalle();
+}
+
+function renderIniDetalle(){
+  var wrap = document.getElementById('ini-detWrap');
+  if (!iniAbierto) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  var h = '';
+
+  if (iniAbierto === 'ventas') {
+    var d = iniData.desSem.filter(function(r){return r.mt;}).sort(function(a,b){return a.f<b.f?-1:1;});
+    document.getElementById('ini-detTitle').textContent = '📦 Despachos de la semana';
+    document.getElementById('ini-detSub').textContent = d.length+' despachos · '+fmt(d.reduce(function(s,r){return s+r.mt;},0));
+    h='<thead><tr><th style="text-align:left">DES-ID</th><th>Fecha</th><th>Cliente</th><th>Producto</th><th>Unidades</th><th>Monto</th></tr></thead><tbody>';
+    d.forEach(function(r){
+      h+='<tr><td>'+r.id+'</td><td>'+r.fl+'</td><td>'+r.cli+'</td><td>'+r.p+(r.v?' ('+r.v+')':'')+'</td><td>'+n(r.u)+'</td><td style="font-weight:700">'+fmt(r.mt)+'</td></tr>';
+    });
+    h+='</tbody>';
+
+  } else if (iniAbierto === 'margen') {
+    var dm = iniData.desSem.filter(function(r){return r.mt && r.u;});
+    var porProd = {};
+    dm.forEach(function(r){
+      var key = r.p + (r.v?' — '+r.v:'');
+      if(!porProd[key]) porProd[key] = {u:0, fact:0, cmv:0, sinCvu:false};
+      var cvu = getCVU(r.p, r.v);
+      porProd[key].u += r.u;
+      porProd[key].fact += r.mt;
+      if (cvu!=null) porProd[key].cmv += cvu*r.u; else porProd[key].sinCvu = true;
+    });
+    var prods = Object.keys(porProd).sort(function(a,b){return porProd[b].fact-porProd[a].fact;});
+    document.getElementById('ini-detTitle').textContent = '📈 Margen por producto — esta semana';
+    document.getElementById('ini-detSub').textContent = prods.length+' productos vendidos · ordenado por facturación';
+    h='<thead><tr><th style="text-align:left">Producto</th><th>Unidades</th><th>Facturación</th><th>Margen</th></tr></thead><tbody>';
+    prods.forEach(function(p){
+      var pd = porProd[p];
+      var pct = (pd.fact>0 && !pd.sinCvu) ? (pd.fact-pd.cmv)/pd.fact*100 : null;
+      var txt = pct==null ? 'sin CVU' : pct.toFixed(0)+'%';
+      var color = pct==null ? 'var(--muted)' : (pct>=35?'var(--accent3)':pct>=20?'var(--accent2)':'var(--danger)');
+      h+='<tr><td>'+p+'</td><td>'+n(pd.u)+'</td><td>'+fmt(pd.fact)+'</td><td style="font-weight:700;color:'+color+'">'+txt+'</td></tr>';
+    });
+    h+='</tbody>';
+
+  } else if (iniAbierto === 'cobros') {
+    var c = iniData.cobSem.slice().sort(function(a,b){return a.f<b.f?-1:1;});
+    document.getElementById('ini-detTitle').textContent = '💰 Cobros de la semana';
+    document.getElementById('ini-detSub').textContent = c.length+' cobros · '+fmt(c.reduce(function(s,r){return s+(r.neto||r.mt||0);},0));
+    h='<thead><tr><th style="text-align:left">COB-ID</th><th>Fecha</th><th>Cliente</th><th>Forma de pago</th><th>Monto</th></tr></thead><tbody>';
+    c.forEach(function(r){
+      h+='<tr><td>'+r.id+'</td><td>'+fFmt(r.f)+'</td><td>'+r.cli+'</td><td>'+(r.fp||'—')+'</td><td style="font-weight:700">'+fmt(r.neto||r.mt)+'</td></tr>';
+    });
+    h+='</tbody>';
+
+  } else if (iniAbierto === 'gastos') {
+    var g = iniData.gasSem.slice().sort(function(a,b){return a.f<b.f?-1:1;});
+    document.getElementById('ini-detTitle').textContent = '💸 Gastos de la semana';
+    document.getElementById('ini-detSub').textContent = g.length+' gastos · '+fmt(g.reduce(function(s,x){return s+(x.mt||0);},0));
+    h='<thead><tr><th style="text-align:left">Fecha</th><th>Proveedor</th><th>Descripción</th><th>Grupo</th><th>Monto</th></tr></thead><tbody>';
+    g.forEach(function(x){
+      h+='<tr><td>'+fFmt(x.f)+'</td><td>'+(x.prov||'—')+'</td><td>'+(x.desc||'—')+'</td><td>'+grpNom(String(x.grupo||'').charAt(0))+'</td><td style="font-weight:700">'+fmt(x.mt)+'</td></tr>';
+    });
+    h+='</tbody>';
+  }
+
+  document.getElementById('ini-detTbl').innerHTML = h;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1003,7 +1814,7 @@ function renderTabla(){
   prods.forEach(function(p){var o=document.createElement('option');o.value=p;o.textContent=p;document.getElementById('tpr').appendChild(o);});
 
   // Tab clicks
-  document.querySelectorAll('.tab').forEach(function(b){b.addEventListener('click',function(){goTab(this.dataset.tab);});});
+  document.querySelectorAll('.sidebar-item').forEach(function(b){b.addEventListener('click',function(){goTab(this.dataset.tab);});});
 
   // EERR vista toggle
   document.querySelectorAll('#eerrVista .bb').forEach(function(btn){
@@ -1067,6 +1878,10 @@ function renderTabla(){
     renderTabla();
   });
 
+  ['ventas','margen','cobros','gastos'].forEach(function(tipo){
+    document.getElementById('ini-card-'+tipo).addEventListener('click', function(){ toggleIniDetalle(tipo); });
+  });
+
   initDateInputs();
   poblarMeses();
   document.getElementById('eerrDesde').min=META.fecha_desde;
@@ -1075,7 +1890,7 @@ function renderTabla(){
   document.getElementById('eerrHasta').min=META.fecha_desde;
   document.getElementById('eerrHasta').max=META.fecha_hasta;
   document.getElementById('eerrHasta').value=META.fecha_hasta;
-  renderFin();
+  renderInicio();
 })();
 
 // ════════════════════════════════════════════════════════════════
