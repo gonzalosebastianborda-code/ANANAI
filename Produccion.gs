@@ -1,3 +1,4 @@
+//Produccion.gs
 // ═══════════════════════════════════════════════════════════════
 // AÑAÑAI · Producción.gs — Stock por SKU
 // Catálogo + Alias + movimientos de Stock (Producción suma, Despachos resta)

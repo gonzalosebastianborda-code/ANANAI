@@ -174,11 +174,7 @@ function guardarGasto(datos) {
   try {
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_GASTOS);
-    var colA = hoja.getRange('A'+GASTOS_START+':A2000').getValues();
-    var fila = GASTOS_START;
-    for (var i = 0; i < colA.length; i++) {
-      if (!colA[i][0]) { fila = GASTOS_START + i; break; }
-    }
+    var fila = Math.max(hoja.getLastRow() + 1, GASTOS_START);
     var seq   = fila - GASTOS_START + 1;
     var gasId = 'GAS-' + (seq < 10 ? '00'+seq : seq < 100 ? '0'+seq : seq);
     var fecha = new Date();
@@ -218,11 +214,7 @@ function guardarPagoProveedor(datos) {
   try {
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_PAGOS_PR);
-    var colA = hoja.getRange('A'+PAGOS_START+':A2000').getValues();
-    var fila = PAGOS_START;
-    for (var i = 0; i < colA.length; i++) {
-      if (!colA[i][0]) { fila = PAGOS_START + i; break; }
-    }
+    var fila = Math.max(hoja.getLastRow() + 1, PAGOS_START);
     var seq   = fila - PAGOS_START + 1;
     var pagId = 'PAG-' + (seq < 10 ? '00'+seq : seq < 100 ? '0'+seq : seq);
     var fecha = new Date();

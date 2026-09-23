@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AÑAÑAI · Calendario de Producción</title>
+<style>
+/* Pantalla autónoma: no depende de sharedCSS() ni de ningún otro archivo.
+   Verde = mismo color del módulo Producción (#2F6B4F). Semántica de color:
+   ámbar = falta producir · verde = listo · gris = ya salió · rojo = atrasado. */
+:root{
+  --bg:#ECEFEA; --panel:#fff; --ink:#1c2620; --muted:#65726a; --line:#d9dfd7;
+  --green:#2F6B4F; --greenD:#20503a; --greenBg:#e3f0e8;
+  --amber:#9a5b00; --amberBg:#fdf0da; --red:#b42318; --redBg:#fdecea;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{font-family:"Avenir Next","Segoe UI",system-ui,-apple-system,Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:15px;line-height:1.35}
+button{font:inherit;cursor:pointer}
+button:focus-visible,summary:focus-visible{outline:3px solid #ffd27a;outline-offset:2px}
+
+/* ── barra superior ── */
+.top{background:var(--green);color:#fff;padding:12px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px}
+.brand{flex:1;min-width:150px}
+.brand .t1{font-size:18px;font-weight:800}
+.brand .t2{font-size:12px;opacity:.8}
+.nav{display:flex;align-items:center;gap:6px}
+.nav button{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:8px;height:40px;min-width:40px;font-size:22px;font-weight:700;line-height:1}
+.nav .tit{min-width:170px;text-align:center;font-weight:700;font-size:15px;padding:0 6px}
+.nav .hoyBtn{display:none;font-size:13px;padding:0 14px;min-width:0}
+.pill{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:20px;padding:7px 13px;font-size:12px;display:flex;align-items:center;gap:7px}
+.pill .dot{width:8px;height:8px;border-radius:50%;background:#7ee2a8}
+.pill.err{background:#7a4a00}
+.pill.err .dot{background:#ffb454}
+@media(min-width:720px){.nav{margin:0 auto}}
+@media(max-width:719px){.nav{order:3;width:100%}.nav .tit{flex:1;min-width:0}}
+
+/* ── tira de días (solo celular) ── */
+.tira{display:none}
+@media(max-width:719px){
+  .tira{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;padding:8px 10px;background:var(--bg);position:sticky;top:0;z-index:5;border-bottom:1px solid var(--line)}
+}
+.cel{background:var(--panel);border:1px solid var(--line);border-radius:8px;padding:6px 0 5px;text-align:center;cursor:pointer}
+.cel .dow{display:block;font-size:11px;font-weight:700;color:var(--muted)}
+.cel .num{display:block;font-size:17px;font-weight:800;margin:1px 0 3px}
+.cel .cnt{display:inline-block;min-width:22px;padding:1px 6px;border-radius:10px;font-size:11px;font-weight:700;background:#eef0ed;color:var(--muted)}
+.cel.pend .cnt{background:var(--amberBg);color:var(--amber)}
+.cel.ok .cnt{background:var(--greenBg);color:var(--greenD)}
+.cel.hoy{border-color:var(--green);box-shadow:inset 0 0 0 1px var(--green)}
+
+/* ── cuerpo: un día por tarjeta; en pantallas anchas se arma la grilla semanal ── */
+main{padding:12px;max-width:1800px;margin:0 auto}
+.semana{display:grid;gap:10px;grid-template-columns:1fr;align-items:start;transition:opacity .15s}
+.semana.cargando{opacity:.45}
+@media(min-width:720px){.semana{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}}
+@media(min-width:1500px){.semana{grid-template-columns:repeat(7,minmax(0,1fr))}}
+.dia{background:var(--panel);border:1px solid var(--line);border-radius:10px;overflow:hidden;scroll-margin-top:74px}
+.dia.hoy{border-color:var(--green);box-shadow:0 0 0 1px var(--green)}
+.diaH{display:flex;align-items:baseline;gap:8px;padding:10px 12px;background:#f4f6f3;border-bottom:1px solid var(--line)}
+.dia.hoy .diaH{background:var(--green);color:#fff}
+.dNom{font-size:17px;font-weight:800}
+.dFecha{font-size:13px;opacity:.75;margin-left:6px}
+.diaH .grow{flex:1}
+.hoyTag{background:#fff;color:var(--green);font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;align-self:center}
+.dCnt{font-size:12px;font-weight:700;color:var(--muted)}
+.dia.hoy .dCnt{color:#fff;opacity:.9}
+.dia.vacio .diaH{border-bottom:0;background:transparent}
+.dia.vacio{background:transparent;border-style:dashed}
+.dia.vacio .dNom{font-size:15px;color:var(--muted)}
+.sinPed{font-size:13px;color:var(--muted)}
+
+.resumen{padding:8px 12px;border-bottom:1px solid var(--line);background:#fafbf9}
+.resT{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:2px}
+.rRow{display:flex;align-items:baseline;gap:8px;padding:3px 0}
+.rQty{font-weight:800;font-size:21px;min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+.rNom{flex:1;font-size:14px}
+.rEst{font-size:12px;font-weight:700;white-space:nowrap}
+.rEst.falta{color:var(--amber);background:var(--amberBg);padding:2px 9px;border-radius:12px}
+.rEst.ok{color:var(--greenD)}
+
+.ped{padding:10px 12px;border-bottom:1px solid var(--line)}
+.ped:last-child{border-bottom:0}
+.ped.ent{opacity:.55}
+.ped.atr{box-shadow:inset 4px 0 0 var(--red)}
+.pedH{display:flex;justify-content:space-between;align-items:flex-start;gap:8px;margin-bottom:3px}
+.cli{font-size:15px}
+.sub{display:block;font-size:12px;color:var(--muted)}
+.sub .atrTxt{color:var(--red);font-weight:700}
+.tag{font-size:11px;font-weight:700;border-radius:12px;padding:2px 9px;white-space:nowrap}
+.tag.por,.tag.parc{background:var(--amberBg);color:var(--amber)}
+.tag.listo{background:var(--greenBg);color:var(--greenD)}
+.tag.ent{background:#eceeec;color:#68726b}
+.lin{display:flex;align-items:baseline;gap:8px;padding:2px 0}
+.lin .q{font-weight:800;min-width:42px;text-align:right;font-variant-numeric:tabular-nums}
+.lin .n{flex:1}
+.lin i{font-style:normal;color:var(--muted);font-size:12px}
+.obs{margin:2px 0 5px 50px;padding:3px 9px;background:var(--amberBg);border-left:3px solid #e0a040;border-radius:3px;font-size:13px;color:#7a4700}
+
+.atras{background:var(--redBg);border:1px solid #f3c5bf;border-radius:10px;margin-bottom:12px;overflow:hidden}
+.atras summary{padding:11px 14px;font-weight:700;color:var(--red);cursor:pointer}
+.atras .ped{background:var(--panel)}
+.aviso{background:var(--amberBg);border:1px solid #ecd29b;border-radius:10px;margin-top:12px;overflow:hidden}
+.aviso .avH{padding:10px 14px;font-weight:700;color:var(--amber)}
+.aviso .ped{background:var(--panel)}
+.vacioSemana{text-align:center;color:var(--muted);padding:6px 0 14px;font-size:14px}
+.msgFull{max-width:420px;margin:60px auto;padding:0 20px;text-align:center;color:var(--muted)}
+.msgFull b{display:block;font-size:18px;color:var(--ink);margin-bottom:6px}
+
+.leyenda{padding:6px 16px 22px;font-size:12.5px;color:var(--muted);max-width:1800px;margin:0 auto}
+.leyenda span{white-space:nowrap;margin-right:14px;display:inline-block}
+
+@media print{
+  .top .pill,.nav button,.tira{display:none}
+  body{background:#fff}
+  .semana{grid-template-columns:repeat(2,1fr)}
+  .dia{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="brand"><div class="t1">Producción</div><div class="t2">Calendario de pedidos</div></div>
+  <nav class="nav" aria-label="Semana">
+    <button type="button" id="btnAnt" aria-label="Semana anterior">‹</button>
+    <div class="tit" id="titulo">Cargando…</div>
+    <button type="button" id="btnSig" aria-label="Semana siguiente">›</button>
+    <button type="button" class="hoyBtn" id="btnHoy">Hoy</button>
+  </nav>
+  <button type="button" class="pill" id="pill" title="Tocá para actualizar ahora"><span class="dot"></span><span id="pillTxt">Cargando…</span></button>
+</header>
+
+<div class="tira" id="tira"></div>
+
+<main>
+  <div id="atrasados"></div>
+  <div class="vacioSemana" id="vacioSem" style="display:none">No hay pedidos para esta semana.</div>
+  <div class="semana" id="semana"></div>
+  <div id="sinFecha"></div>
+</main>
+
+<div class="leyenda" id="leyenda">
+  <span><b>Por hacer</b> = falta producirlo</span>
+  <span><b>Terminado</b> = listo para entregar</span>
+  <span><b>Entregado</b> = ya salió (atenuado)</span>
+</div>
+
+<script>
+// La clave viaja en el link (?k=...). El servidor la deja pasar solo si es alfanumérica.
+var CLAVE = '<?!= clave ?>';
+var REFRESH_MS = 90000;   // se actualiza solo cada 90 s (y al volver a la pestaña)
+
+var ST = { lunes:'', hoy:'', ant:'', sig:'', actual:true, firma:'', ultimoOk:0,
+           cargando:false, bloqueado:false, primera:true, atrasadosAbierto:false };
+
+var DOW   = { 'Lunes':'Lun','Martes':'Mar','Miércoles':'Mié','Jueves':'Jue','Viernes':'Vie','Sábado':'Sáb','Domingo':'Dom' };
+var LBL   = { 'Aceptado':'Por hacer', 'Terminado':'Terminado', 'Entregado':'Entregado' };
+var CLS   = { 'Aceptado':'por', 'Terminado':'listo', 'Entregado':'ent' };
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function hora(){ var d=new Date(); return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+function esCelu(){ return !!(window.matchMedia && window.matchMedia('(max-width:719px)').matches); }
+function reduceMov(){ return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+
+// ── comunicación con el servidor ────────────────────────────────
+function cargar(desde, silencioso){
+  if(ST.cargando || ST.bloqueado) return;
+  ST.cargando = true;
+  if(!silencioso) $('semana').classList.add('cargando');
+  google.script.run
+    .withSuccessHandler(function(r){
+      ST.cargando = false; $('semana').classList.remove('cargando');
+      if(!r || !r.ok){
+        if(r && r.bloqueado){ bloquear(r.mensaje); return; }
+        estadoPill(false, (r && r.mensaje) ? r.mensaje : 'No se pudo actualizar');
+        return;
+      }
+      aplicar(r);
+    })
+    .withFailureHandler(function(){
+      ST.cargando = false; $('semana').classList.remove('cargando');
+      estadoPill(false, 'Sin conexión — reintentando');
+    })
+    .getCalendarioPublico(desde || '', CLAVE);
+}
+function refrescar(){
+  // Si estaba mirando "esta semana" sigue mirándola aunque pase la medianoche.
+  cargar(ST.actual ? '' : ST.lunes, true);
+}
+function estadoPill(ok, txt){
+  $('pill').className = 'pill' + (ok ? '' : ' err');
+  $('pillTxt').textContent = txt;
+}
+function bloquear(msg){
+  ST.bloqueado = true;
+  document.querySelector('main').innerHTML = '<div class="msgFull"><b>Link no válido</b>'+esc(msg)+'</div>';
+  ['tira','leyenda'].forEach(function(id){ $(id).style.display='none'; });
+  $('titulo').textContent = '—';
+  estadoPill(false, 'Sin acceso');
+}
+
+// ── render ──────────────────────────────────────────────────────
+function aplicar(r){
+  ST.ultimoOk = Date.now();
+  estadoPill(true, 'Actualizado '+hora());
+  // Si no cambió nada no se vuelve a dibujar (evita parpadeo y saltos de scroll).
+  var firma = JSON.stringify(r);
+  if(firma === ST.firma) return;
+  ST.firma = firma;
+  ST.lunes = r.lunes; ST.hoy = r.hoy; ST.ant = r.semanaAnterior; ST.sig = r.semanaSiguiente; ST.actual = !!r.esSemanaActual;
+
+  var d0 = r.dias[0], d6 = r.dias[6];
+  $('titulo').textContent = d0.dd+'/'+d0.mm+' – '+d6.dd+'/'+d6.mm + (ST.actual ? ' · esta semana' : '');
+  $('btnHoy').style.display = ST.actual ? 'none' : 'block';
+
+  $('tira').innerHTML = r.dias.map(function(d){
+    var n = d.pedidos.length;
+    var cls = 'cel'+(d.esHoy?' hoy':'')+(n ? (d.pendientes ? ' pend' : ' ok') : '');
+    return '<div class="'+cls+'" data-iso="'+d.iso+'"><span class="dow">'+DOW[d.diaSemana]+'</span>'
+         + '<span class="num">'+d.dd+'</span><span class="cnt">'+(n||'·')+'</span></div>';
+  }).join('');
+
+  // Atrasados (venció la fecha y todavía no salieron), plegado para no ocupar lugar
+  var a = r.atrasados || [];
+  $('atrasados').innerHTML = a.length
+    ? '<details class="atras"'+(ST.atrasadosAbierto?' open':'')+'><summary>⚠ '+a.length+(a.length===1?' pedido atrasado':' pedidos atrasados')+' sin entregar</summary>'
+      + a.map(function(g){ return htmlPedido(g, true); }).join('') + '</details>'
+    : '';
+  var det = $('atrasados').querySelector('details');
+  if(det) det.addEventListener('toggle', function(){ ST.atrasadosAbierto = det.open; });
+
+  var hayAlgo = r.dias.some(function(d){ return d.pedidos.length; });
+  $('semana').innerHTML = r.dias.map(htmlDia).join('');
+  $('vacioSem').style.display = (!hayAlgo && !a.length) ? 'block' : 'none';
+
+  var sf = r.sinFecha || [];
+  $('sinFecha').innerHTML = sf.length
+    ? '<div class="aviso"><div class="avH">⚠ Sin fecha estimada ('+sf.length+')</div>'
+      + sf.map(function(g){ return htmlPedido(g, false); }).join('') + '</div>'
+    : '';
+
+  // Primera carga en el celular: ir directo al día de hoy
+  if(ST.primera && esCelu() && ST.actual){ setTimeout(function(){ irADia(ST.hoy, true); }, 60); }
+  ST.primera = false;
+}
+
+function htmlDia(d){
+  var nom = '<span><span class="dNom">'+d.diaSemana+'</span><span class="dFecha">'+d.dd+'/'+d.mm+'</span></span>';
+  var hoyTag = d.esHoy ? '<span class="hoyTag">HOY</span>' : '';
+  if(!d.pedidos.length){
+    return '<section class="dia vacio'+(d.esHoy?' hoy':'')+'" id="dia_'+d.iso+'"><div class="diaH">'+nom+'<span class="grow"></span>'+hoyTag
+         + '<span class="sinPed">Sin pedidos</span></div></section>';
+  }
+  var h = '<section class="dia'+(d.esHoy?' hoy':'')+'" id="dia_'+d.iso+'"><div class="diaH">'+nom+'<span class="grow"></span>'+hoyTag
+        + '<span class="dCnt">'+d.pedidos.length+(d.pedidos.length===1?' pedido':' pedidos')+'</span></div>';
+  h += '<div class="resumen"><div class="resT">Resumen del día</div>';
+  d.resumen.forEach(function(x){
+    h += '<div class="rRow"><span class="rQty">'+x.total+'</span><span class="rNom">'+esc(x.etiqueta)+'</span>'
+       + (x.porHacer>0 ? '<span class="rEst falta">faltan '+x.porHacer+'</span>' : '<span class="rEst ok">✓ listo</span>')
+       + '</div>';
+  });
+  h += '</div>';
+  d.pedidos.forEach(function(g){ h += htmlPedido(g, false); });
+  return h + '</section>';
+}
+
+// Un pedido = un cliente con sus líneas. Si las líneas están en estados
+// distintos (entrega parcial) el encabezado dice "Parcial" y cada línea
+// muestra su propio estado.
+function htmlPedido(g, conFecha){
+  var tag = g.mixto ? '<span class="tag parc">Parcial</span>'
+                    : '<span class="tag '+(CLS[g.estado]||'por')+'">'+esc(LBL[g.estado]||g.estado)+'</span>';
+  var sub = [];
+  if(g.vendedor) sub.push('Cargó '+esc(g.vendedor));
+  if(conFecha && g.fechaEstimada) sub.push('debía salir el '+esc(g.fechaEstimada.slice(0,5)));
+  var subHtml = sub.join(' · ') + (g.atrasado && !conFecha ? (sub.length?' · ':'')+'<span class="atrTxt">⚠ atrasado</span>' : '');
+  var h = '<article class="ped'+((!g.mixto&&g.estado==='Entregado')?' ent':'')+(g.atrasado?' atr':'')+'">'
+        + '<div class="pedH"><div><b class="cli">'+esc(g.cliente)+'</b>'+(subHtml?'<span class="sub">'+subHtml+'</span>':'')+'</div>'+tag+'</div>';
+  g.lineas.forEach(function(l){
+    var uni = (l.unidad && l.unidad.toLowerCase()!=='unidad') ? ' <i>'+esc(l.unidad.toLowerCase())+'</i>' : '';
+    h += '<div class="lin"><span class="q">'+l.unidades+'</span><span class="n">'+esc(l.etiqueta)+uni+'</span>'
+       + (g.mixto ? '<span class="tag '+(CLS[l.estado]||'por')+'">'+esc(LBL[l.estado]||l.estado)+'</span>' : '')
+       + '</div>';
+    if(l.obs) h += '<div class="obs">📝 '+esc(l.obs)+'</div>';
+  });
+  return h + '</article>';
+}
+
+function irADia(iso, instantaneo){
+  var el = $('dia_'+iso);
+  if(el) el.scrollIntoView({behavior:(instantaneo||reduceMov())?'auto':'smooth', block:'start'});
+}
+
+// ── eventos ─────────────────────────────────────────────────────
+$('btnAnt').addEventListener('click', function(){ cargar(ST.ant, false); });
+$('btnSig').addEventListener('click', function(){ cargar(ST.sig, false); });
+$('btnHoy').addEventListener('click', function(){ cargar('', false); });
+$('pill').addEventListener('click', function(){ refrescar(); });
+$('tira').addEventListener('click', function(ev){
+  var n = ev.target; while(n && n !== this && !(n.getAttribute && n.getAttribute('data-iso'))) n = n.parentNode;
+  if(n && n.getAttribute) irADia(n.getAttribute('data-iso'), false);
+});
+setInterval(function(){ if(!document.hidden) refrescar(); }, REFRESH_MS);
+document.addEventListener('visibilitychange', function(){
+  if(!document.hidden && Date.now() - ST.ultimoOk > 30000) refrescar();
+});
+
+cargar('', false);
+</script>
+</body>
+</html>

@@ -1,3 +1,4 @@
+//Codigo.gs
 // ═══════════════════════════════════════════════════════════════
 // AÑAÑAI · Módulo Ventas & Cobros
 // Apps Script — Setup + Formularios + Lógica de negocio
@@ -31,6 +32,54 @@ var ANANAI_PRECIOS = {
   'Bollos Pizza':   1054,
   'Prepizzas':      1202,
   'Pan de Molde':   2960,
+};
+
+// ── SABORES por producto con tier oculto (Tartines / Pizzas) ──────
+// El usuario ve el sabor; el sistema lee el tier (Alto/Bajo) para el
+// precio. Tiers deducidos del histórico real. tierPrecio es fallback
+// si la hoja no tuviera la fila. GLOBAL: la usan tanto
+// buildFormDespachoHTML() (Despacho manual) como getCatalogoParaPedidos()
+// (formulario de Pedidos) — una sola fuente de verdad para sabores y
+// tiers, así no se desincronizan entre los dos formularios.
+var FLAVORS = {
+  'Tartines': { tierPrecio: {'Altos':6300, 'Bajos':5600}, sabores: [
+    {sabor:'Jamón y Queso',        tier:'Altos', variante:'Tartin — Jamón y Queso'},
+    {sabor:'Pollo',                tier:'Altos', variante:'Tartin — Pollo'},
+    {sabor:'Atún',                 tier:'Altos', variante:'Tartin — Atún'},
+    {sabor:'Verduras y Roquefort', tier:'Altos', variante:'Tartin — Verduras y Roquefort'},
+    {sabor:'Capresse',             tier:'Bajos', variante:'Tartin — Capresse'},
+    {sabor:'Espinaca',             tier:'Bajos', variante:'Tartin — Espinaca'},
+    {sabor:'Cebolla y Queso',      tier:'Bajos', variante:'Tartin — Cebolla y Queso'}
+  ]},
+  'Pizzas': { tierPrecio: {'Alto':8500, 'Bajo':8000}, sabores: [
+    {sabor:'Especial',       tier:'Alto', variante:'Pizza — Especial'},
+    {sabor:'Cuatro Poderes', tier:'Alto', variante:'Pizza — Cuatro Poderes'},
+    {sabor:'Pesto',          tier:'Bajo', variante:'Pizza — Pesto'},
+    {sabor:'Napoleón',       tier:'Bajo', variante:'Pizza — Napoleón'},
+    {sabor:'Jota',           tier:'Bajo', variante:'Pizza — Jota'},
+    {sabor:'Fugazza',        tier:'Bajo', variante:'Pizza — Fugazza'},
+    {sabor:'Capresse',       tier:'Bajo', variante:'Pizza — Capresse'}
+  ]},
+  // ── Sin tier: mismo precio para cualquier variante, pero cada una es
+  // un SKU de Stock distinto — antes el dropdown mandaba el nombre
+  // genérico y siempre descontaba del primer SKU (ej. Chipalmendras
+  // Común) sin importar cuál se vendió en realidad.
+  'Chipalmendras': { sabores: [
+    {sabor:'Común',           variante:'Común'},
+    {sabor:'Vegano',          variante:'Vegano'},
+    {sabor:'Chipa Saludable', variante:'Chipa Saludable'}
+  ]},
+  // Pan de Molde: unificado a un solo producto (PAN-001) — con/sin Semilla
+  // quedaron en el Catálogo (por si hacen falta después) pero ya no se
+  // ofrecen acá, confundían al operario. Por eso NO tiene entrada en
+  // FLAVORS: al no tener variantes configuradas, el desplegable no
+  // pregunta sabor y el despacho resuelve directo a PAN-001 vía Alias.
+  'Fideos': { sabores: [
+    {sabor:'Fettuccine',               variante:'Fettuccine'},
+    {sabor:'Sorrentinos',              variante:'Sorrentinos'},
+    {sabor:'Sorrentino Jamón y Queso', variante:'Sorrentino Jamón y Queso'},
+    {sabor:'Sorrentino Calabaza',      variante:'Sorrentino Calabaza'}
+  ]}
 };
 
 // ── MAESTRO DE PRODUCTOS ────────────────────────────────────────
@@ -283,6 +332,11 @@ function guardarMetaVentasMensual(objetivo, cf, pin) {
   return { ok: true, mensaje: '✅ Meta de ventas mensual actualizada.' };
 }
 
+// ═══════════════════════════════════════════════════════════════
+// REEMPLAZO COMPLETO de la función doGet() en Código.gs
+// (borrá la doGet actual entera y pegá esta en su lugar).
+// Es la misma de siempre + UNA rama nueva: page === 'calendario'.
+// ═══════════════════════════════════════════════════════════════
 function doGet(e) {
   var page = e && e.parameter && e.parameter.page;
 
@@ -300,7 +354,23 @@ function doGet(e) {
       .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
       .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
   }
-
+  if (page === 'pedidos') {
+  var tPed = HtmlService.createTemplateFromFile('PedidosForm');
+  return tPed.evaluate()
+    .setTitle('AÑAÑAI · Pedidos')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+}
+  // ── NUEVO: calendario de producción (sin login, solo lectura, sin precios) ──
+  if (page === 'calendario') {
+    var tCal = HtmlService.createTemplateFromFile('CalendarioProduccion');
+    // La clave del link (?k=...) se limpia a alfanumérico antes de meterla en la página.
+    tCal.clave = String((e && e.parameter && e.parameter.k) || '').replace(/[^A-Za-z0-9_-]/g, '').slice(0, 64);
+    return tCal.evaluate()
+      .setTitle('AÑAÑAI · Calendario de Producción')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   if (page === 'stock') {
     var tStock = HtmlService.createTemplateFromFile('Stock');
     tStock.datos = JSON.stringify(getDatosStockParaPantalla());  // from Producción.gs
@@ -320,7 +390,6 @@ function doGet(e) {
     .setTitle('AÑAÑAI · Ventas & Cobros')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
-
 function getDatosParaDashboard() {
   var ss;
   var sid = PropertiesService.getScriptProperties().getProperty('SHEET_ID');
@@ -342,6 +411,7 @@ function getDatosParaDashboard() {
     rawD.forEach(function(r) {
       var cli = String(r[3]).trim();
       if (!cli || cli === 'undefined' || cli === '') return;
+      if (String(r[12]||'').trim() === 'Anulado') return; // despacho revertido — no cuenta como venta
       var fecha = r[1] instanceof Date ? r[1] : null;
       var fStr  = fecha ? Utilities.formatDate(fecha, TZ, 'yyyy-MM-dd') : '';
       var fl    = fecha ? Utilities.formatDate(fecha, TZ, 'dd/MM')      : '';
@@ -364,10 +434,11 @@ function getDatosParaDashboard() {
 
   var cobros = [];
   if (hCob && hCob.getLastRow() >= DATA_ROW) {
-    var rawC = hCob.getRange(DATA_ROW, 1, hCob.getLastRow()-DATA_ROW+1, 8).getValues();
+    var rawC = hCob.getRange(DATA_ROW, 1, hCob.getLastRow()-DATA_ROW+1, 11).getValues();
     rawC.forEach(function(r) {
       var cli = String(r[3]).trim();
       if (!cli || cli === '') return;
+      if (String(r[10]||'').indexOf('ANULADO') > -1) return; // cobro anulado — no cuenta
       var fecha = r[1] instanceof Date ? r[1] : null;
       cobros.push({
         id:    String(r[0]).trim(),
@@ -438,6 +509,7 @@ function onOpen() {
   gastoOnOpen();  // crea el menú 💸 AÑAÑAI Gastos (definido en Proveedores.gs)
   produccionOnOpen();  // crea el menú 🏭 AÑAÑAI Producción (definido en Producción.gs)
   stockOnOpen();  // crea el menú 📦 AÑAÑAI Stock (definido en Producción.gs)
+  pedidosOnOpen();  // crea el menú 🧾 AÑAÑAI Pedidos (definido en Pedidos.gs)
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -464,6 +536,14 @@ function getProductos() {
               return { nombre:r[0], variante:r[1], unidad:r[2],
                        pLibre: r[3]||null, p1: r[4]||null, tienePrecio: r[5]==='Sí' };
             });
+}
+
+// Bundle para el formulario de Pedidos: catálogo + sabores/tiers +
+// precios especiales Añañai + umbral, en un solo viaje al servidor
+// (en vez de 3 llamadas separadas). Misma fuente de datos que usa el
+// formulario de Despacho — ver FLAVORS y ANANAI_PRECIOS arriba.
+function getCatalogoParaPedidos() {
+  return { productos: getProductos(), flavors: FLAVORS, ananaiPrecios: ANANAI_PRECIOS, umbral: UMBRAL_P1 };
 }
 
 // Acumulado de unidades del cliente en el mes actual
@@ -495,33 +575,37 @@ function _norm(s) {
 // CXC = saldo acumulado: facturado (crédito + contado no cobrado) − cobrado, por cliente
 function getCXC() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var factu = {}, cobrado = {};
-
+  var factu = {}, cobrado = {}, display = {};
+  getClientes().forEach(function(c) { display[_norm(c.nombre)] = c.nombre; });
+  function key(nombre) {
+    var k = _norm(nombre);
+    if (!display[k]) display[k] = String(nombre).trim();
+    return k;
+  }
   var hDes = ss.getSheetByName(H_DESPACHOS);
   if (hDes && hDes.getLastRow() >= DATA_ROW) {
-    var rawD = hDes.getRange(DATA_ROW, 1, hDes.getLastRow()-DATA_ROW+1, 13).getValues();
-    rawD.forEach(function(r) {
+    hDes.getRange(DATA_ROW, 1, hDes.getLastRow()-DATA_ROW+1, 13).getValues().forEach(function(r) {
       var cli = String(r[3]).trim(); var mt = Number(r[10])||0;
-      // NETEO PURO: toda venta (crédito o contado) suma al facturado; el cobro
-      // correspondiente la netea. No se excluye el contado, porque la migración
-      // creó su cobro: excluir la venta pero restar el cobro rompía el neteo.
-      if (cli && mt > 0) factu[cli] = (factu[cli]||0) + mt;
+      var estado = String(r[12]||'').trim();
+      // Despacho Anulado (revertido) no factura — no debe sumar a la CxC.
+      if (cli && mt > 0 && estado !== 'Anulado') { var k = key(cli); factu[k] = (factu[k]||0) + mt; }
     });
   }
-
   var hCob = ss.getSheetByName(H_COBROS);
   if (hCob && hCob.getLastRow() >= DATA_ROW) {
-    var rawC = hCob.getRange(DATA_ROW, 1, hCob.getLastRow()-DATA_ROW+1, 8).getValues();
-    rawC.forEach(function(r) {
+    // Rango ampliado a 11 columnas (antes 8) para poder leer Obs (col 11):
+    // ahí es donde queda anotado un cobro anulado (ver _anularCobro_ en Pedidos.gs).
+    hCob.getRange(DATA_ROW, 1, hCob.getLastRow()-DATA_ROW+1, 11).getValues().forEach(function(r) {
       var cli = String(r[3]).trim(); var neto = Number(r[6])||Number(r[4])||0;
-      if (cli && neto > 0) cobrado[cli] = (cobrado[cli]||0) + neto;
+      var obs = String(r[10]||'');
+      // Cobro anulado (revertido junto con un pedido) no debe descontar de la CxC.
+      if (cli && neto > 0 && obs.indexOf('ANULADO') === -1) { var k = key(cli); cobrado[k] = (cobrado[k]||0) + neto; }
     });
   }
-
   var cxc = {};
-  Object.keys(factu).forEach(function(cli) {
-    var saldo = (factu[cli]||0) - (cobrado[cli]||0);
-    if (saldo > 1) cxc[cli] = Math.round(saldo);
+  Object.keys(factu).forEach(function(k) {
+    var saldo = (factu[k]||0) - (cobrado[k]||0);
+    if (saldo > 1) cxc[display[k]] = Math.round(saldo);
   });
   return cxc;
 }
@@ -531,8 +615,15 @@ function genId(prefijo, hoja_nombre) {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();
   var hoja = ss.getSheetByName(hoja_nombre);
   var last = hoja.getLastRow();
-  var seq  = Math.max(0, last - DATA_ROW + 1) + 1;
-  return prefijo + (seq < 10 ? '00'+seq : seq < 100 ? '0'+seq : seq);
+  if (last < DATA_ROW) return prefijo + '001';
+  var ids = hoja.getRange(DATA_ROW, 1, last - DATA_ROW + 1, 1).getValues();
+  var maxNum = 0;
+  ids.forEach(function(r) {
+    var m = String(r[0]).match(/(\d+)$/);
+    if (m) { var n = parseInt(m[1], 10); if (n > maxNum) maxNum = n; }
+  });
+  var seq = maxNum + 1;
+  return prefijo + (seq < 10 ? '00'+seq : seq < 100 ? '0'+seq : String(seq));
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -562,12 +653,8 @@ function guardarDespacho(datos) {
       return { ok: false, mensaje: movimiento.mensaje };
     }
 
-    // Buscar primera fila libre en col A desde DATA_ROW
-    var colA = hoja.getRange('A'+DATA_ROW+':A1000').getValues();
-    var fila = DATA_ROW;
-    for (var i = 0; i < colA.length; i++) {
-      if (!colA[i][0]) { fila = DATA_ROW + i; break; }
-    }
+        // Agregar siempre al final real de la hoja
+    var fila = Math.max(hoja.getLastRow() + 1, DATA_ROW);
 
     var fecha    = new Date();
     var precio   = Number(datos.precio);
@@ -628,11 +715,7 @@ function guardarCobro(datos) {
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_COBROS);
 
-    var colA = hoja.getRange('A'+DATA_ROW+':A1000').getValues();
-    var fila = DATA_ROW;
-    for (var i = 0; i < colA.length; i++) {
-      if (!colA[i][0]) { fila = DATA_ROW + i; break; }
-    }
+    var fila = Math.max(hoja.getLastRow() + 1, DATA_ROW);
 
     var cobId    = genId('COB-', H_COBROS);
     var fecha    = new Date();
@@ -694,11 +777,7 @@ function guardarNC(datos) {
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_NC);
 
-    var colA = hoja.getRange('A'+DATA_ROW+':A1000').getValues();
-    var fila = DATA_ROW;
-    for (var i = 0; i < colA.length; i++) {
-      if (!colA[i][0]) { fila = DATA_ROW + i; break; }
-    }
+    var fila = Math.max(hoja.getLastRow() + 1, DATA_ROW);
 
     var ncId  = genId('NC-', H_NC);
     var fecha = new Date();
@@ -738,6 +817,37 @@ function guardarNC(datos) {
                ' para ' + datos.clienteNombre
     };
   } catch(e) { return { ok:false, mensaje:'❌ '+e.message }; }
+}
+
+// ════════════════════════════════════════════════════════════════
+// ANULAR DESPACHO — usada exclusivamente por revertirPedido() (Pedidos.gs)
+// No borra la fila (trazabilidad): marca Estado='Anulado' y anota el
+// motivo en Obs. getCXC() y getDatosParaDashboard() ya excluyen estos
+// despachos del cálculo.
+//
+// OJO: esta función NO valida si el despacho está 'Cobrado' — esa
+// decisión (si es seguro anular un despacho ya cobrado) la toma
+// revertirPedido() ANTES de llamar acá, con su propio pre-chequeo.
+// Se deja así para no duplicar esa lógica de negocio en dos lugares.
+// ════════════════════════════════════════════════════════════════
+function _anularDespacho_(desId, motivo) {
+  var ss   = SpreadsheetApp.getActiveSpreadsheet();
+  var hoja = ss.getSheetByName(H_DESPACHOS);
+  var last = hoja.getLastRow();
+  if (last < DATA_ROW) return { ok: false, mensaje: 'No hay despachos cargados.' };
+  var raw = hoja.getRange(DATA_ROW, 1, last - DATA_ROW + 1, 14).getValues();
+  for (var i = 0; i < raw.length; i++) {
+    if (String(raw[i][0]).trim() === String(desId).trim()) {
+      var fila = DATA_ROW + i;
+      var estadoActual = String(raw[i][12] || '').trim();
+      if (estadoActual === 'Anulado') return { ok: false, mensaje: desId + ' ya estaba anulado.' };
+      var obsActual = raw[i][13] || '';
+      hoja.getRange(fila, 13).setValue('Anulado');
+      hoja.getRange(fila, 14).setValue((obsActual ? obsActual + ' · ' : '') + '⚠ ANULADO — ' + motivo);
+      return { ok: true };
+    }
+  }
+  return { ok: false, mensaje: 'No se encontró el despacho ' + desId + '.' };
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -1066,48 +1176,9 @@ function buildFormDespachoHTML(clientes, productos) {
   }).join('');
 
   // ── SABORES por producto con tier oculto (Tartines / Pizzas) ──
-  // El usuario ve el sabor; el sistema lee el tier (Alto/Bajo) para el precio.
-  // Tiers deducidos del histórico real. tierPrecio es fallback si la hoja no tuviera la fila.
-  var FLAVORS = {
-    'Tartines': { tierPrecio: {'Altos':6300, 'Bajos':5600}, sabores: [
-      {sabor:'Jamón y Queso',        tier:'Altos', variante:'Tartin — Jamón y Queso'},
-      {sabor:'Pollo',                tier:'Altos', variante:'Tartin — Pollo'},
-      {sabor:'Atún',                 tier:'Altos', variante:'Tartin — Atún'},
-      {sabor:'Verduras y Roquefort', tier:'Altos', variante:'Tartin — Verduras y Roquefort'},
-      {sabor:'Capresse',             tier:'Bajos', variante:'Tartin — Capresse'},
-      {sabor:'Espinaca',             tier:'Bajos', variante:'Tartin — Espinaca'},
-      {sabor:'Cebolla y Queso',      tier:'Bajos', variante:'Tartin — Cebolla y Queso'}
-    ]},
-    'Pizzas': { tierPrecio: {'Alto':8500, 'Bajo':8000}, sabores: [
-      {sabor:'Especial',       tier:'Alto', variante:'Pizza — Especial'},
-      {sabor:'Cuatro Poderes', tier:'Alto', variante:'Pizza — Cuatro Poderes'},
-      {sabor:'Pesto',          tier:'Bajo', variante:'Pizza — Pesto'},
-      {sabor:'Napoleón',       tier:'Bajo', variante:'Pizza — Napoleón'},
-      {sabor:'Jota',           tier:'Bajo', variante:'Pizza — Jota'},
-      {sabor:'Fugazza',        tier:'Bajo', variante:'Pizza — Fugazza'},
-      {sabor:'Capresse',       tier:'Bajo', variante:'Pizza — Capresse'}
-    ]},
-    // ── Sin tier: mismo precio para cualquier variante, pero cada una es
-    // un SKU de Stock distinto — antes el dropdown mandaba el nombre
-    // genérico y siempre descontaba del primer SKU (ej. Chipalmendras
-    // Común) sin importar cuál se vendió en realidad.
-    'Chipalmendras': { sabores: [
-      {sabor:'Común',           variante:'Común'},
-      {sabor:'Vegano',          variante:'Vegano'},
-      {sabor:'Chipa Saludable', variante:'Chipa Saludable'}
-    ]},
-    // Pan de Molde: unificado a un solo producto (PAN-001) — con/sin Semilla
-    // quedaron en el Catálogo (por si hacen falta después) pero ya no se
-    // ofrecen acá, confundían al operario. Por eso NO tiene entrada en
-    // FLAVORS: al no tener variantes configuradas, el desplegable no
-    // pregunta sabor y el despacho resuelve directo a PAN-001 vía Alias.
-    'Fideos': { sabores: [
-      {sabor:'Fettuccine',               variante:'Fettuccine'},
-      {sabor:'Sorrentinos',              variante:'Sorrentinos'},
-      {sabor:'Sorrentino Jamón y Queso', variante:'Sorrentino Jamón y Queso'},
-      {sabor:'Sorrentino Calabaza',      variante:'Sorrentino Calabaza'}
-    ]}
-  };
+  // FLAVORS ahora es una variable global (ver el bloque junto a
+  // ANANAI_PRECIOS, arriba en el archivo) — se comparte con Pedidos.gs
+  // para que el desplegable de sabores sea el mismo en los dos formularios.
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
     + sharedCSS()

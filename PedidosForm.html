@@ -1,0 +1,824 @@
+//PedidosForm.html
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>AÑAÑAI · Pedidos</title>
+<?!= sharedCSS() ?>
+<style>
+/* Reusa las clases .hdr/.body/.field/.btns/.b1/.b2/.msg/.sp de sharedCSS()
+   (definida en Código.gs) para que esta página se vea igual que los
+   sidebars de Despacho/Cobro/Gasto. Lo de acá abajo es solo lo propio
+   de Pedidos: layout mobile, tabs, tarjetas de pedido y badges de estado. */
+body{max-width:560px;margin:0 auto;background:#f5f7fa}
+.topbar{background:#2F5496;color:#fff;padding:13px 17px;display:flex;justify-content:space-between;align-items:center}
+.topbar .who{font-size:11px;opacity:.85;margin-top:1px}
+.topbar button{background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700}
+.tabs{display:flex;background:#fff;border-bottom:1px solid #e0e6f0;overflow-x:auto;position:sticky;top:0;z-index:10}
+.tab{flex:1;padding:11px 6px;text-align:center;font-size:11px;font-weight:700;color:#8891a8;border-bottom:3px solid transparent;white-space:nowrap;cursor:pointer}
+.tab.on{color:#2F5496;border-bottom-color:#2F5496}
+.view{padding:15px 17px;display:none}
+.view.on{display:block}
+.card{background:#fff;border:1px solid #e0e6f0;border-radius:10px;padding:13px 15px;margin-bottom:10px}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap}
+.b-pendiente{background:#fff4e6;color:#a05010}
+.b-aceptado{background:#eef3fb;color:#2F5496}
+.b-terminado{background:#eef8f2;color:#1a7a40}
+.b-entregado{background:#e8f8ef;color:#1a7a40}
+.b-rechazado,.b-cancelado{background:#fde8e8;color:#b82020}
+.b-revertido{background:#f0e6fa;color:#6b21a8}
+.linea{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed #eee;gap:8px}
+.accBtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.accBtns button{flex:1;min-width:86px;padding:9px 6px;border:none;border-radius:6px;font-size:11.5px;font-weight:700;color:#fff}
+.roleBtns{display:grid;gap:10px;margin-top:6px}
+.roleBtn{padding:16px;border-radius:10px;border:1.5px solid #d0d7e8;background:#fff;font-size:14px;font-weight:700;color:#1a1a2e}
+.roleBtn:active{background:#f0f4ff}
+.cartLine{display:flex;gap:8px;align-items:center;background:#f5f7fa;border-radius:8px;padding:9px;margin-bottom:6px}
+.cartLine .fl{flex:1;font-size:12px}
+.cartLine button{background:#fde8e8;color:#b82020;border:none;border-radius:5px;width:28px;height:28px;font-weight:700;flex:none}
+.kFila{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee;font-size:12.5px}
+.empty2{text-align:center;padding:26px;color:#8891a8;font-size:12.5px}
+.pinDots{text-align:center}
+/* ── precios en chip (Nuevo pedido) — mismo lenguaje visual que Despacho ── */
+.panel-precios{display:none;margin:10px 0;padding:12px;border-radius:10px;background:#eef3fa;border:1px solid #cdd9ec}
+.panel-precios.show{display:block}
+.pp-title{font-size:11.5px;color:#1F3864;font-weight:600;margin-bottom:8px}
+.pp-row{display:flex;gap:8px;flex-wrap:wrap}
+.pp-chip{flex:1;min-width:100px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 10px;border-radius:8px;border:1px solid #2F5496;background:#fff;cursor:pointer;text-align:left}
+.pp-chip:active{background:#f0f4ff}
+.pp-chip.pp-ana{border-color:#1e7a46}
+.pp-lbl{font-size:10.5px;color:#666}
+.pp-val{font-size:17px;font-weight:800;color:#1F3864}
+.pp-ana .pp-val{color:#1e7a46}
+.pp-chip.pp-libre{border-color:#b7841a}
+.pp-libre .pp-val{color:#b7841a}
+.pp-hint{margin-top:8px;font-size:11.5px;color:#1e7a46;font-weight:600}
+.pp-nota{font-size:12.5px;color:#a15b00;font-weight:600}
+.pp-chip.on{background:#2F5496;color:#fff}
+.pp-chip.on .pp-lbl,.pp-chip.on .pp-val{color:#fff}
+/* ── CXC: fila clickeable + detalle expandible ── */
+.cxcRow{cursor:pointer}
+.cxcDet{font-size:11.5px}
+/* ── modal confirmar entrega (método de cobro) ── */
+.meOverlay{display:none;position:fixed;inset:0;background:rgba(20,28,45,.55);z-index:9998;align-items:center;justify-content:center;padding:16px}
+.meOverlay.show{display:flex}
+.meBox{max-width:400px;width:100%;max-height:88vh;overflow-y:auto;margin:0}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════ LOGIN ══════════════════ -->
+<div id="loginView">
+  <div class="hdr" style="background:#2F5496"><h2>🧾 AÑAÑAI · Pedidos</h2><p>Elegí tu rol para ingresar</p></div>
+  <div class="body">
+    <div id="rolesPaso" class="roleBtns">
+      <button class="roleBtn" onclick="elegirRol('vendedor')">🛵 Vendedor</button>
+      <button class="roleBtn" onclick="elegirRol('gerente')">🧑‍💼 Gerente</button>
+      <button class="roleBtn" onclick="elegirRol('dueno')">👑 Dueño</button>
+      <button class="roleBtn" onclick="elegirRol('cfo')">🔧 CFO</button>
+    </div>
+
+    <div id="pinPaso" style="display:none">
+      <div class="field"><label id="pinLabel">PIN</label>
+        <input type="password" id="pinInp" inputmode="numeric" maxlength="4" placeholder="••••" class="pinDots" style="font-size:22px;letter-spacing:8px" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
+      </div>
+      <div class="btns">
+        <button class="b1" style="background:#2F5496" onclick="intentarLogin()">Ingresar</button>
+        <button class="b2" onclick="volverARoles()">← Volver</button>
+      </div>
+    </div>
+
+    <div id="nombrePaso" style="display:none">
+      <div class="field"><label>Tu nombre</label>
+        <input type="text" id="nombreInp" list="nombresSugeridos" placeholder="Elegí o escribí tu nombre">
+        <datalist id="nombresSugeridos"></datalist>
+      </div>
+      <div class="btns"><button class="b1" style="background:#2F5496" onclick="confirmarNombre()">Continuar</button></div>
+    </div>
+
+    <div class="msg" id="msgLogin"></div>
+  </div>
+</div>
+
+<!-- ══════════════════ APP ══════════════════ -->
+<div id="appView" style="display:none">
+  <div class="topbar">
+    <div><div style="font-weight:700;font-size:13px" id="rolLabel">—</div><div class="who" id="quienLabel"></div></div>
+    <button onclick="logout()">Salir</button>
+  </div>
+  <div class="tabs" id="tabsWrap"></div>
+
+  <!-- ── NUEVO PEDIDO ── -->
+  <div class="view" id="view-nuevo">
+    <div class="field"><label>Cliente<span class="req">*</span></label>
+      <select id="npCliente" onchange="onNpClienteChange()"><option value="">— Seleccioná —</option></select>
+    </div>
+    <div class="field"><label>Fecha estimada de despacho<span class="req">*</span> <span style="font-weight:400;font-size:10px;color:#888">— una sola para todo el pedido</span></label>
+      <input type="date" id="npFechaEstimada">
+    </div>
+    <div class="field"><label>Método de cobro <span style="font-weight:400;font-size:10px;color:#888">— se confirma/cambia al entregar</span></label>
+      <div class="pp-row" id="npCondicionRow">
+        <button type="button" class="pp-chip" id="npCondChip_Contado" onclick="elegirCondicionPedido('Contado')"><span class="pp-val" style="font-size:13.5px">Contado</span></button>
+        <button type="button" class="pp-chip" id="npCondChip_Credito" onclick="elegirCondicionPedido('Crédito')"><span class="pp-val" style="font-size:13.5px">Crédito</span></button>
+        <button type="button" class="pp-chip" id="npCondChip_Adefinir" onclick="elegirCondicionPedido('A definir')"><span class="pp-val" style="font-size:12px">A definir</span></button>
+      </div>
+    </div>
+    <div class="field"><label>Producto<span class="req">*</span></label>
+      <select id="npProducto" onchange="onNpProductoChange()"><option value="">— Seleccioná —</option></select>
+    </div>
+    <div class="field" id="npVarianteWrap" style="display:none"><label>Sabor<span class="req">*</span></label>
+      <select id="npVariante" onchange="onNpVarianteChange()"></select>
+    </div>
+    <div class="panel-precios" id="npPanelPrecios"></div>
+    <div class="r2" style="margin-top:10px">
+      <div class="field"><label>Unidades<span class="req">*</span></label>
+        <input type="number" id="npUnidades" min="1" placeholder="0" style="font-size:16px;font-weight:700;text-align:center;color:#2F5496"></div>
+      <div class="field"><label>Precio unitario ($) <span style="font-weight:400;font-size:10px;color:#888">— elegí arriba</span></label>
+        <input type="number" id="npPrecio" min="0" placeholder="Elegí un precio" readonly style="font-weight:700;color:#1F3864;background:#f0f4ff"></div>
+    </div>
+    <div class="btns"><button class="b2" onclick="agregarLinea()">➕ Agregar al pedido</button></div>
+
+    <div style="margin-top:16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5a6580">Pedido actual</div>
+    <div id="carritoWrap" style="margin-top:8px"></div>
+
+    <div class="btns" style="margin-top:12px">
+      <button class="b1" style="background:#2F5496" onclick="enviarPedido()">💾 Enviar pedido</button>
+    </div>
+    <div class="msg" id="msgNuevo"></div>
+  </div>
+
+  <!-- ── LISTA DE PEDIDOS ── -->
+  <div class="view" id="view-pedidos">
+    <div id="pedidosWrap"></div>
+    <div class="msg" id="msgPedidos"></div>
+  </div>
+
+  <!-- ── CALENDARIO DE PEDIDOS ── -->
+  <div class="view" id="view-calendario">
+    <div class="hint hint-info show" style="margin-bottom:10px">Pedidos Aceptados o Terminados — compromisos ya confirmados con Producción — agrupados por fecha estimada de despacho.</div>
+    <div id="calendarioWrap"></div>
+  </div>
+
+  <!-- ── STOCK TEÓRICO ── -->
+  <div class="view" id="view-stock">
+    <div class="hint hint-info show" style="margin-bottom:10px">Stock teórico = stock físico actual menos lo comprometido en pedidos Aceptados o Terminados que todavía no se entregaron.</div>
+    <div id="stockWrap"></div>
+  </div>
+
+  <!-- ── CXC (gerente/dueño/cfo) ── -->
+  <div class="view" id="view-cxc">
+    <div class="hint hint-info show" style="margin-bottom:10px">Tocá un cliente para ver sus últimos cobros y cruzar la deuda contra la frecuencia de pago.</div>
+    <div id="cxcWrap"></div>
+  </div>
+
+  <!-- ── CONFIG PINES (solo CFO) ── -->
+  <div class="view" id="view-config">
+    <div class="hint hint-warn show" style="margin-bottom:12px">Los 4 PINs son compartidos por rol, no por persona. Cambiar uno afecta a todos los que lo usan.</div>
+    <div id="pinCfgWrap"></div>
+    <div class="msg" id="msgConfig"></div>
+  </div>
+</div>
+
+<!-- ── MODAL: confirmar entrega + método de cobro ── -->
+<div class="meOverlay" id="modalEntregaOverlay">
+  <div class="card meBox">
+    <div style="font-weight:700;color:#2F5496;margin-bottom:4px">🚚 Confirmar entrega</div>
+    <div style="font-size:12px;color:#888;margin-bottom:12px">Total del pedido: <b id="meMonto"></b></div>
+    <div class="field"><label>¿Cómo paga el cliente?<span class="req">*</span></label>
+      <div class="pp-row">
+        <button type="button" class="pp-chip" id="meCondChip_Contado" onclick="meElegirCondicion('Contado')"><span class="pp-val" style="font-size:13.5px">Contado</span></button>
+        <button type="button" class="pp-chip" id="meCondChip_Credito" onclick="meElegirCondicion('Crédito')"><span class="pp-val" style="font-size:13.5px">Crédito</span></button>
+      </div>
+    </div>
+    <div class="field" id="meFormaPagoWrap" style="display:none">
+      <label>Forma de pago<span class="req">*</span></label>
+      <div class="pp-row">
+        <button type="button" class="pp-chip meFpChip" data-val="Efectivo" onclick="meElegirFormaPago('Efectivo')"><span class="pp-val" style="font-size:12.5px">Efectivo</span></button>
+        <button type="button" class="pp-chip meFpChip" data-val="Transferencia" onclick="meElegirFormaPago('Transferencia')"><span class="pp-val" style="font-size:12.5px">Transf.</span></button>
+        <button type="button" class="pp-chip meFpChip" data-val="Cheque" onclick="meElegirFormaPago('Cheque')"><span class="pp-val" style="font-size:12.5px">Cheque</span></button>
+        <button type="button" class="pp-chip meFpChip" data-val="Otro" onclick="meElegirFormaPago('Otro')"><span class="pp-val" style="font-size:12.5px">Otro</span></button>
+      </div>
+      <input type="text" id="meReferencia" placeholder="N° de transferencia / referencia (opcional)" style="margin-top:8px">
+    </div>
+    <div class="btns" style="margin-top:10px">
+      <button class="b1" style="background:#1a7a40" onclick="confirmarEntrega()">✅ Confirmar entrega</button>
+      <button class="b2" onclick="cerrarModalEntrega()">Cancelar</button>
+    </div>
+    <div class="msg" id="msgModalEntrega"></div>
+  </div>
+</div>
+
+<script><?!= formUXJS() ?></script>
+<script>
+// ── ESTADO DE SESIÓN ────────────────────────────────────────────
+var TOKEN = null, ROL = null, VENDEDOR_NOMBRE = null, rolElegido = null;
+var CLIENTES = [], PRODUCTOS = [], carrito = [];
+var NOMBRES_ROL = { vendedor:'Vendedor', gerente:'Gerente', dueno:'Dueño', cfo:'CFO' };
+
+// Método de cobro pactado para el pedido que se está armando en "Nuevo
+// pedido" — uno solo por pedido, igual criterio que la fecha estimada.
+// Default 'A definir': se puede resolver ahora o dejarlo para cuando
+// se entregue (ver el modal de marcarEntregado más abajo).
+var npCondicionPedido = 'A definir';
+
+// ── Catálogo extendido: sabores/tiers + precios especiales Añañai ──
+// (llega en un solo viaje vía getCatalogoParaPedidos(), ver entrarAlApp())
+var FLAVORS = {}, ANANAI_MAP = {}, UMBRAL = 400;
+var PROD_MAP = {}, PROD_MAP_N = {}, ANANAI_N = {};
+var esAnanaiCliente = false;
+
+// ── LOGIN ──────────────────────────────────────────────────────
+function elegirRol(rol){
+  rolElegido = rol;
+  document.getElementById('rolesPaso').style.display='none';
+  document.getElementById('pinPaso').style.display='block';
+  document.getElementById('pinLabel').textContent='PIN de '+NOMBRES_ROL[rol];
+  document.getElementById('pinInp').value='';
+  document.getElementById('pinInp').focus();
+}
+function volverARoles(){
+  document.getElementById('pinPaso').style.display='none';
+  document.getElementById('rolesPaso').style.display='grid';
+}
+function intentarLogin(){
+  var pin=v('pinInp');
+  if(!pin){ show('Ingresá el PIN.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false);
+      if(!r.ok){ showLogin(r.mensaje,false); return; }
+      TOKEN=r.token; ROL=r.rol;
+      if(r.requiereNombre){
+        document.getElementById('pinPaso').style.display='none';
+        cargarNombresSugeridos();
+        var guardado = _leerNombreLocal();
+        if(guardado) document.getElementById('nombreInp').value = guardado;
+        document.getElementById('nombrePaso').style.display='block';
+      } else {
+        entrarAlApp();
+      }
+    })
+    .withFailureHandler(function(e){ sp(false); showLogin('Error: '+e.message,false); })
+    .loginPedidos(rolElegido, pin);
+}
+function cargarNombresSugeridos(){
+  google.script.run.withSuccessHandler(function(lista){
+    var dl=document.getElementById('nombresSugeridos');
+    dl.innerHTML='';
+    (lista||[]).forEach(function(n){ var o=document.createElement('option'); o.value=n; dl.appendChild(o); });
+  }).getVendedoresSugeridos();
+}
+function confirmarNombre(){
+  var nombre=v('nombreInp');
+  if(!nombre){ showLogin('Ingresá tu nombre.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false);
+      if(!r.ok){ showLogin(r.mensaje,false); return; }
+      VENDEDOR_NOMBRE=nombre;
+      _guardarNombreLocal(nombre);
+      entrarAlApp();
+    })
+    .withFailureHandler(function(e){ sp(false); showLogin('Error: '+e.message,false); })
+    .setVendedorNombre(TOKEN, nombre);
+}
+function logout(){
+  TOKEN=null; ROL=null; VENDEDOR_NOMBRE=null; rolElegido=null; carrito=[];
+  document.getElementById('appView').style.display='none';
+  document.getElementById('loginView').style.display='block';
+  document.getElementById('rolesPaso').style.display='grid';
+  document.getElementById('pinPaso').style.display='none';
+  document.getElementById('nombrePaso').style.display='none';
+  document.getElementById('msgLogin').style.display='none';
+}
+// Conveniencia por dispositivo — solo el NOMBRE, nunca el PIN ni la
+// sesión. Sirve para no re-tipear el nombre cada vez en el mismo
+// teléfono; si dos vendedores comparten equipo, alcanza con editarlo.
+function _guardarNombreLocal(n){ try{ localStorage.setItem('ananai_ped_vendedor', n); }catch(e){} }
+function _leerNombreLocal(){ try{ return localStorage.getItem('ananai_ped_vendedor')||''; }catch(e){ return ''; } }
+function showLogin(txt,ok){ var el=document.getElementById('msgLogin'); el.textContent=txt; el.className='msg '+(ok?'ok':'er'); el.style.display='block'; }
+
+// ── ENTRAR AL APP ────────────────────────────────────────────────
+function entrarAlApp(){
+  document.getElementById('loginView').style.display='none';
+  document.getElementById('appView').style.display='block';
+  document.getElementById('rolLabel').textContent=NOMBRES_ROL[ROL];
+  document.getElementById('quienLabel').textContent = ROL==='vendedor' ? VENDEDOR_NOMBRE : '';
+  construirTabs();
+  google.script.run.withSuccessHandler(function(cs){CLIENTES=cs; poblarClientes();}).getClientes();
+  google.script.run.withSuccessHandler(function(r){
+    PRODUCTOS=r.productos||[]; FLAVORS=r.flavors||{}; ANANAI_MAP=r.ananaiPrecios||{}; UMBRAL=r.umbral||400;
+    construirMapasProductos();
+    poblarProductos();
+  }).getCatalogoParaPedidos();
+  var hoy=new Date();
+  var minFecha=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
+  document.getElementById('npFechaEstimada').min=minFecha;
+  elegirCondicionPedido('A definir');
+  irATab('pedidos');
+}
+function construirTabs(){
+  var tabs=[{id:'nuevo',lbl:'➕ Nuevo'},{id:'pedidos',lbl:'📋 Pedidos'},{id:'calendario',lbl:'📅 Calendario'},{id:'stock',lbl:'📦 Stock'}];
+  if(ROL==='gerente'||ROL==='dueno'||ROL==='cfo') tabs.push({id:'cxc',lbl:'💰 CXC'});
+  if(ROL==='cfo') tabs.push({id:'config',lbl:'⚙ PINs'});
+  var w=document.getElementById('tabsWrap'); w.innerHTML='';
+  tabs.forEach(function(t){
+    var b=document.createElement('div');
+    b.className='tab'; b.textContent=t.lbl; b.dataset.tab=t.id;
+    b.onclick=function(){ irATab(t.id); };
+    w.appendChild(b);
+  });
+}
+function irATab(id){
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('on',t.dataset.tab===id);});
+  document.querySelectorAll('.view').forEach(function(vv){vv.classList.toggle('on', vv.id==='view-'+id);});
+  if(id==='pedidos')    cargarPedidos();
+  if(id==='calendario') cargarCalendario();
+  if(id==='stock')      cargarStock();
+  if(id==='cxc')        cargarCXC();
+  if(id==='config')     cargarConfigPines();
+}
+
+// ── NUEVO PEDIDO ─────────────────────────────────────────────────
+function poblarClientes(){
+  var sel=document.getElementById('npCliente');
+  sel.innerHTML='<option value="">— Seleccioná —</option>' + CLIENTES.map(function(c){
+    return '<option value="'+c.id+'" data-nombre="'+c.nombre+'" data-cond="'+c.condicion+'">'+c.nombre+'</option>';
+  }).join('');
+}
+function poblarProductos(){
+  var sel=document.getElementById('npProducto');
+  var nombres=[]; PRODUCTOS.forEach(function(p){ if(nombres.indexOf(p.nombre)===-1) nombres.push(p.nombre); });
+  sel.innerHTML='<option value="">— Seleccioná —</option>' + nombres.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+}
+
+// Normalización: minúsculas, sin acentos, sin espacios — mismo criterio
+// que usa el servidor (_norm en Código.gs) para no fallar por un tilde.
+function norm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''); }
+
+function construirMapasProductos(){
+  PROD_MAP={}; PROD_MAP_N={}; ANANAI_N={};
+  PRODUCTOS.forEach(function(p){
+    var key=p.nombre+(p.variante?' — '+p.variante:'');
+    PROD_MAP[key]=p; PROD_MAP_N[norm(key)]=p;
+  });
+  Object.keys(ANANAI_MAP).forEach(function(k){ ANANAI_N[norm(k)]=ANANAI_MAP[k]; });
+}
+function precioAnanaiDe(prod){
+  var val=(ANANAI_MAP[prod]!==undefined)?ANANAI_MAP[prod]:ANANAI_N[norm(prod)];
+  return (val===undefined||val===null)?null:val;
+}
+function p1De(prod,tier){
+  if(tier){
+    var k=prod+' — '+tier;
+    if(PROD_MAP[k]&&PROD_MAP[k].p1!=null) return PROD_MAP[k].p1;
+    if(PROD_MAP_N[norm(k)]&&PROD_MAP_N[norm(k)].p1!=null) return PROD_MAP_N[norm(k)].p1;
+    if(FLAVORS[prod]&&FLAVORS[prod].tierPrecio&&FLAVORS[prod].tierPrecio[tier]!=null) return FLAVORS[prod].tierPrecio[tier];
+    return null;
+  }
+  if(PROD_MAP[prod]&&PROD_MAP[prod].p1!=null) return PROD_MAP[prod].p1;
+  if(PROD_MAP_N[norm(prod)]&&PROD_MAP_N[norm(prod)].p1!=null) return PROD_MAP_N[norm(prod)].p1;
+  return null;
+}
+function pLibreDe(prod,tier){
+  if(tier){
+    var k=prod+' — '+tier;
+    if(PROD_MAP[k]&&PROD_MAP[k].pLibre!=null) return PROD_MAP[k].pLibre;
+    if(PROD_MAP_N[norm(k)]&&PROD_MAP_N[norm(k)].pLibre!=null) return PROD_MAP_N[norm(k)].pLibre;
+  } else {
+    if(PROD_MAP[prod]&&PROD_MAP[prod].pLibre!=null) return PROD_MAP[prod].pLibre;
+    if(PROD_MAP_N[norm(prod)]&&PROD_MAP_N[norm(prod)].pLibre!=null) return PROD_MAP_N[norm(prod)].pLibre;
+  }
+  var b=p1De(prod,tier); return (b!=null)?Math.round(b*1.05):null;
+}
+function unidadDe(prod,tier){
+  var k=tier?prod+' — '+tier:prod;
+  if(PROD_MAP[k]&&PROD_MAP[k].unidad) return PROD_MAP[k].unidad;
+  if(PROD_MAP_N[norm(k)]&&PROD_MAP_N[norm(k)].unidad) return PROD_MAP_N[norm(k)].unidad;
+  if(PROD_MAP[prod]&&PROD_MAP[prod].unidad) return PROD_MAP[prod].unidad;
+  return 'Unidad';
+}
+
+// Marca visualmente el chip de método de cobro elegido y guarda el
+// valor en npCondicionPedido, que agregarLinea() usa para cada ítem.
+function elegirCondicionPedido(val){
+  npCondicionPedido = val;
+  document.querySelectorAll('#npCondicionRow .pp-chip').forEach(function(b){ b.classList.remove('on'); });
+  var idMap = {'Contado':'npCondChip_Contado', 'Crédito':'npCondChip_Credito', 'A definir':'npCondChip_Adefinir'};
+  var el = document.getElementById(idMap[val]);
+  if(el) el.classList.add('on');
+}
+
+// ── Cliente: detecta Añañai (precio especial) y refresca el panel ──
+function onNpClienteChange(){
+  var sel=document.getElementById('npCliente');
+  var opt=sel.options[sel.selectedIndex];
+  var cliNom=opt?(opt.getAttribute('data-nombre')||''):'';
+  esAnanaiCliente=norm(cliNom).indexOf('ananai')>-1;
+  // Pre-selecciona el método de cobro según el default del cliente
+  // (mismo comportamiento silencioso que había antes), pero ahora queda
+  // visible y el vendedor lo puede cambiar o dejar "A definir".
+  var condDefault = (sel.value && opt) ? (opt.getAttribute('data-cond')||'Crédito') : 'A definir';
+  elegirCondicionPedido(condDefault);
+  var prod=v('npProducto');
+  if(!prod) return;
+  if(FLAVORS[prod]){
+    var vsel=document.getElementById('npVariante');
+    if(!vsel.value) return;
+    var vopt=vsel.options[vsel.selectedIndex];
+    mostrarPreciosNP(prod, vopt?vopt.getAttribute('data-tier'):null);
+  } else {
+    mostrarPreciosNP(prod, null);
+  }
+}
+
+// ── Producto: si tiene FLAVORS, el desplegable muestra SABORES reales
+// (no el tier Alto/Bajo) — esto es lo que antes fallaba para Tartines,
+// y de paso corrige el mismo problema en Pizzas/Chipalmendras/Fideos.
+function onNpProductoChange(){
+  var prod=v('npProducto');
+  var wrap=document.getElementById('npVarianteWrap');
+  var sel=document.getElementById('npVariante');
+  limpiarPrecioNP();
+  if(FLAVORS[prod]){
+    sel.innerHTML='<option value="">— Elegí el sabor —</option>' + FLAVORS[prod].sabores.map(function(s){
+      return '<option value="'+s.variante+'"'+(s.tier?' data-tier="'+s.tier+'"':'')+'>'+s.sabor+'</option>';
+    }).join('');
+    wrap.style.display='block';
+  } else {
+    wrap.style.display='none'; sel.innerHTML='';
+    mostrarPreciosNP(prod, null);
+  }
+}
+function onNpVarianteChange(){
+  var prod=v('npProducto');
+  var sel=document.getElementById('npVariante');
+  if(!sel.value){ limpiarPrecioNP(); return; }
+  var opt=sel.options[sel.selectedIndex];
+  var tier=opt?opt.getAttribute('data-tier'):null;
+  mostrarPreciosNP(prod, tier||null);
+}
+
+// ── Panel de precios: solo botones, no se puede tipear el precio ──
+function mostrarPreciosNP(prod,tier){
+  var panel=document.getElementById('npPanelPrecios');
+  var p1=p1De(prod,tier);
+  document.getElementById('npPrecio').value='';
+  if(p1==null){
+    panel.innerHTML='<div class="pp-nota">⚠ Sin precio configurado para este producto — avisá al CFO antes de cargar el pedido.</div>';
+    panel.className='panel-precios show';
+    return;
+  }
+  var pa=precioAnanaiDe(prod);
+  var ananai=(pa!==null)?pa:p1;
+  var esEspecial=(pa!==null);
+  var pl=pLibreDe(prod,tier);
+  var h='<div class="pp-title">💡 Elegí el precio — no se escribe a mano</div><div class="pp-row">';
+  if(pl!=null) h+='<button type="button" class="pp-chip pp-libre" onclick="usarPrecioNP('+pl+')"><span class="pp-lbl">Precio Libre</span><span class="pp-val">$'+pl.toLocaleString('es-AR')+'</span></button>';
+  h+='<button type="button" class="pp-chip" onclick="usarPrecioNP('+p1+')"><span class="pp-lbl">Precio P1</span><span class="pp-val">$'+p1.toLocaleString('es-AR')+'</span></button>';
+  if(esEspecial) h+='<button type="button" class="pp-chip pp-ana" onclick="usarPrecioNP('+ananai+')"><span class="pp-lbl">Precio Añañai</span><span class="pp-val">$'+ananai.toLocaleString('es-AR')+'</span></button>';
+  h+='</div>';
+  if(esAnanaiCliente&&esEspecial) h+='<div class="pp-hint">🏪 Cliente Añañai: corresponde el precio Añañai ($'+ananai.toLocaleString('es-AR')+').</div>';
+  panel.innerHTML=h;
+  panel.className='panel-precios show';
+}
+function usarPrecioNP(val){ document.getElementById('npPrecio').value=val; }
+function limpiarPrecioNP(){
+  document.getElementById('npPanelPrecios').innerHTML='';
+  document.getElementById('npPanelPrecios').className='panel-precios';
+  document.getElementById('npPrecio').value='';
+}
+
+function agregarLinea(){
+  var cliSel=document.getElementById('npCliente');
+  var cliOpt=cliSel.options[cliSel.selectedIndex];
+  var prod=v('npProducto'), vari=v('npVariante');
+  var unidades=Number(v('npUnidades')), precio=Number(v('npPrecio'));
+  var err=[];
+  if(!cliSel.value) err.push('Cliente');
+  if(!prod) err.push('Producto');
+  if(FLAVORS[prod] && !vari) err.push('Sabor');
+  if(!unidades) err.push('Unidades');
+  if(!precio) err.push('Precio (elegí un botón)');
+  if(err.length){ showMsg('msgNuevo','Completá: '+err.join(', '),false); return; }
+
+  var vsel=document.getElementById('npVariante');
+  var vopt=vsel.options[vsel.selectedIndex];
+  var tier=vopt?vopt.getAttribute('data-tier'):null;
+  var unidad=unidadDe(prod,tier);
+
+  carrito.push({
+    cliId: cliSel.value, clienteNombre: cliOpt.getAttribute('data-nombre'),
+    producto: prod, variante: vari||'', unidad: unidad,
+    unidades: unidades, precio: precio, precioTipo:'Manual',
+    condicion: npCondicionPedido||'A definir', obs:''
+  });
+  document.getElementById('npUnidades').value='';
+  document.getElementById('npVariante').value='';
+  limpiarPrecioNP();
+  renderCarrito();
+}
+function quitarLinea(i){ carrito.splice(i,1); renderCarrito(); }
+function renderCarrito(){
+  var w=document.getElementById('carritoWrap');
+  if(!carrito.length){ w.innerHTML='<div class="empty2">Todavía no agregaste productos.</div>'; return; }
+  var h='';
+  carrito.forEach(function(it,i){
+    h+='<div class="cartLine"><div class="fl"><b>'+it.producto+(it.variante?' — '+it.variante:'')+'</b><br>'
+      +it.unidades+' u. × $'+it.precio.toLocaleString('es-AR')+' = $'+(it.unidades*it.precio).toLocaleString('es-AR')+'</div>'
+      +'<button onclick="quitarLinea('+i+')">✕</button></div>';
+  });
+  w.innerHTML=h;
+}
+function enviarPedido(){
+  if(!carrito.length){ showMsg('msgNuevo','Agregá al menos un producto.',false); return; }
+  var fechaEst=v('npFechaEstimada');
+  if(!fechaEst){ showMsg('msgNuevo','Elegí la fecha estimada de despacho.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgNuevo',r.mensaje,r.ok);
+      if(r.ok){ carrito=[]; renderCarrito(); document.getElementById('npFechaEstimada').value=''; elegirCondicionPedido('A definir'); }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgNuevo','Error: '+e.message,false); })
+    .crearPedido(carrito, fechaEst, TOKEN);
+}
+
+// ── LISTA DE PEDIDOS ─────────────────────────────────────────────
+function cargarPedidos(){
+  document.getElementById('pedidosWrap').innerHTML='<div class="empty2">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ document.getElementById('pedidosWrap').innerHTML='<div class="empty2" style="color:#b82020">'+r.mensaje+'</div>'; return; }
+      renderPedidos(r.pedidos);
+    })
+    .withFailureHandler(function(e){ document.getElementById('pedidosWrap').innerHTML='Error: '+e.message; })
+    .listarPedidos(TOKEN);
+}
+function renderPedidos(pedidos){
+  var grupos={};
+  pedidos.forEach(function(p){ if(!grupos[p.grupo]) grupos[p.grupo]=[]; grupos[p.grupo].push(p); });
+  var claves=Object.keys(grupos).sort().reverse();
+  var w=document.getElementById('pedidosWrap');
+  if(!claves.length){ w.innerHTML='<div class="empty2">No hay pedidos para mostrar.</div>'; return; }
+
+  var puedeGestionar = (ROL==='gerente'||ROL==='cfo');
+  var h='';
+  claves.forEach(function(g){
+    var lineas=grupos[g];
+    var p0=lineas[0];
+    var estado=p0.estado;
+    var monto=lineas.reduce(function(s,l){return s+(Number(l.monto)||0);},0);
+    var claseEstado='b-'+estado.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    var condTxt=(p0.condicion==='Contado'||p0.condicion==='Crédito') ? ' · 💳 '+p0.condicion : '';
+    h+='<div class="card">'
+      +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
+      +'<div><b>'+p0.cliente+'</b><div style="font-size:11px;color:#888">'+p0.fecha+' · '+(p0.vendedor||'—')
+      +(p0.fechaEstimada?' · despacho '+p0.fechaEstimada:'')+condTxt+'</div></div>'
+      +'<span class="badge '+claseEstado+'">'+estado+'</span></div>';
+    lineas.forEach(function(l){
+      h+='<div class="linea"><span>'+l.producto+(l.variante?' ('+l.variante+')':'')+' × '+l.unidades+'</span>'
+        +'<span>$'+Math.round(l.monto).toLocaleString('es-AR')+'</span></div>';
+    });
+    h+='<div class="linea" style="border-bottom:none;font-weight:700"><span>Total</span><span>$'+Math.round(monto).toLocaleString('es-AR')+'</span></div>';
+    if(p0.motivo) h+='<div style="font-size:11px;color:#b82020;margin-top:4px">Motivo: '+p0.motivo+'</div>';
+    if(p0.editado==='Sí') h+='<div style="font-size:11px;color:#a05010;margin-top:4px">✎ Editado — ver log en la hoja Pedidos</div>';
+
+    if(puedeGestionar){
+      h+='<div class="accBtns">';
+      if(estado==='Pendiente'){
+        h+='<button style="background:#1a7a40" onclick="accion(\'aceptar\',\''+g+'\')">✅ Aceptar</button>'
+         + '<button style="background:#b82020" onclick="accionConMotivo(\'rechazar\',\''+g+'\')">✕ Rechazar</button>';
+      }
+      if(estado==='Aceptado'){
+        h+='<button style="background:#2F5496" onclick="accion(\'terminar\',\''+g+'\')">🏁 Terminado</button>'
+         + '<button style="background:#a05010" onclick="accionConMotivo(\'cancelar\',\''+g+'\')">Cancelar</button>';
+      }
+      if(estado==='Terminado'){
+        var condPreset=(p0.condicion==='Contado'||p0.condicion==='Crédito') ? p0.condicion : '';
+        h+='<button style="background:#1a7a40" onclick="abrirModalEntrega(\''+g+'\',\''+condPreset+'\','+Math.round(monto)+')">🚚 Entregado</button>'
+         + '<button style="background:#a05010" onclick="accionConMotivo(\'cancelar\',\''+g+'\')">Cancelar</button>';
+      }
+      if(estado==='Entregado' && ROL==='cfo'){
+        h+='<button style="background:#6b21a8" onclick="accionRevertir(\''+g+'\')">↩ Revertir</button>';
+      }
+      h+='</div>';
+    }
+    h+='</div>';
+  });
+  w.innerHTML=h;
+}
+function accion(tipo,grupo){
+  var fnMap={aceptar:'aceptarPedido',terminar:'marcarTerminado'};
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){ sp(false); showMsg('msgPedidos',r.mensaje,r.ok); cargarPedidos(); })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgPedidos','Error: '+e.message,false); })
+    [fnMap[tipo]](grupo, TOKEN);
+}
+function accionConMotivo(tipo,grupo){
+  var motivo=prompt(tipo==='rechazar' ? '¿Por qué se rechaza este pedido?' : '¿Por qué se cancela este pedido?');
+  if(motivo===null) return;
+  if(!motivo.trim()){ alert('El motivo es obligatorio.'); return; }
+  var fnMap={rechazar:'rechazarPedido',cancelar:'cancelarPedido'};
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){ sp(false); showMsg('msgPedidos',r.mensaje,r.ok); cargarPedidos(); })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgPedidos','Error: '+e.message,false); })
+    [fnMap[tipo]](grupo, motivo, TOKEN);
+}
+
+// ── MODAL: confirmar entrega + método de cobro ───────────────────
+// Reemplaza el llamado directo a marcarEntregado(): ahora siempre se
+// confirma (o se define, si el pedido quedó "A definir") la condición
+// en el momento de la entrega, y si es Contado se pide la forma de
+// pago ahí mismo — nada queda para completar después.
+var meGrupo=null, meCondicion=null, meFormaPago=null;
+function abrirModalEntrega(grupo, condPreset, monto){
+  meGrupo=grupo; meCondicion=null; meFormaPago=null;
+  document.getElementById('meMonto').textContent='$'+Number(monto||0).toLocaleString('es-AR');
+  document.getElementById('meFormaPagoWrap').style.display='none';
+  document.getElementById('meReferencia').value='';
+  document.querySelectorAll('#modalEntregaOverlay .pp-chip').forEach(function(b){ b.classList.remove('on'); });
+  document.getElementById('msgModalEntrega').style.display='none';
+  if(condPreset==='Contado'||condPreset==='Crédito') meElegirCondicion(condPreset);
+  document.getElementById('modalEntregaOverlay').className='meOverlay show';
+}
+function cerrarModalEntrega(){
+  document.getElementById('modalEntregaOverlay').className='meOverlay';
+}
+function meElegirCondicion(val){
+  meCondicion=val;
+  document.getElementById('meCondChip_Contado').classList.toggle('on', val==='Contado');
+  document.getElementById('meCondChip_Credito').classList.toggle('on', val==='Crédito');
+  document.getElementById('meFormaPagoWrap').style.display = (val==='Contado') ? 'block' : 'none';
+  if(val!=='Contado'){
+    meFormaPago=null;
+    document.querySelectorAll('.meFpChip').forEach(function(b){ b.classList.remove('on'); });
+  }
+}
+function meElegirFormaPago(val){
+  meFormaPago=val;
+  document.querySelectorAll('.meFpChip').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-val')===val); });
+}
+function confirmarEntrega(){
+  if(!meCondicion){ showMsg('msgModalEntrega','Elegí cómo paga el cliente.',false); return; }
+  if(meCondicion==='Contado' && !meFormaPago){ showMsg('msgModalEntrega','Elegí la forma de pago.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false);
+      if(r.ok){ cerrarModalEntrega(); showMsg('msgPedidos', r.mensaje, true); cargarPedidos(); }
+      else { showMsg('msgModalEntrega', r.mensaje, false); }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgModalEntrega','Error: '+e.message,false); })
+    .marcarEntregado(meGrupo, meCondicion, meFormaPago||'', v('meReferencia'), TOKEN);
+}
+
+// ── REVERTIR UN PEDIDO ENTREGADO (solo CFO) ──────────────────────
+function accionRevertir(grupo){
+  var motivo=prompt('¿Por qué se revierte este pedido? (deshace stock, despacho y CXC)');
+  if(motivo===null) return;
+  if(!motivo.trim()){ alert('El motivo es obligatorio.'); return; }
+  if(!confirm('Esto anula el/los despacho(s) generado(s) y devuelve el stock. ¿Confirmás?')) return;
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){ sp(false); showMsg('msgPedidos',r.mensaje,r.ok); cargarPedidos(); })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgPedidos','Error: '+e.message,false); })
+    .revertirPedido(grupo, motivo, TOKEN);
+}
+
+// ── CALENDARIO DE PEDIDOS ─────────────────────────────────────────
+function cargarCalendario(){
+  document.getElementById('calendarioWrap').innerHTML='<div class="empty2">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ document.getElementById('calendarioWrap').innerHTML='<div class="empty2">'+r.mensaje+'</div>'; return; }
+      if(!r.dias.length){ document.getElementById('calendarioWrap').innerHTML='<div class="empty2">No hay pedidos Aceptados o Terminados con fecha estimada.</div>'; return; }
+      var h='';
+      r.dias.forEach(function(d){
+        h+='<div class="card"><div style="font-weight:700;color:#2F5496;margin-bottom:6px">📅 '+d.fecha+'</div>';
+        d.pedidos.forEach(function(p){
+          var claseEstado='b-'+p.estado.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+          h+='<div class="linea"><span>'+p.cliente+' — '+p.producto+(p.variante?' ('+p.variante+')':'')+' × '+p.unidades+'</span>'
+            +'<span class="badge '+claseEstado+'" style="margin-left:6px">'+p.estado+'</span></div>';
+        });
+        h+='</div>';
+      });
+      document.getElementById('calendarioWrap').innerHTML=h;
+    })
+    .withFailureHandler(function(e){ document.getElementById('calendarioWrap').innerHTML='Error: '+e.message; })
+    .getCalendarioPedidos(TOKEN);
+}
+
+// ── STOCK TEÓRICO ────────────────────────────────────────────────
+function cargarStock(){
+  document.getElementById('stockWrap').innerHTML='<div class="empty2">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ document.getElementById('stockWrap').innerHTML='<div class="empty2">'+r.mensaje+'</div>'; return; }
+      if(!r.items.length){ document.getElementById('stockWrap').innerHTML='<div class="empty2">Sin datos de stock.</div>'; return; }
+      var h='';
+      r.items.sort(function(a,b){return a.producto<b.producto?-1:1;}).forEach(function(it){
+        var color = it.stockTeorico<0 ? '#b82020' : (it.stockTeorico<10 ? '#a05010' : '#1a7a40');
+        h+='<div class="kFila"><span>'+it.producto+'</span>'
+          +'<span style="color:'+color+';font-weight:700">'+it.stockTeorico
+          +' <span style="font-weight:400;color:#888;font-size:10.5px">(real '+it.stockActual
+          +(it.comprometido?' − '+it.comprometido+' comprom.':'')+')</span></span></div>';
+      });
+      document.getElementById('stockWrap').innerHTML=h;
+    })
+    .withFailureHandler(function(e){ document.getElementById('stockWrap').innerHTML='Error: '+e.message; })
+    .getStockTeorico(TOKEN);
+}
+
+// ── CXC — fila clickeable, expande últimos cobros del cliente ──────
+var cobrosCache={};
+function cargarCXC(){
+  document.getElementById('cxcWrap').innerHTML='<div class="empty2">Cargando…</div>';
+  cobrosCache={};
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ document.getElementById('cxcWrap').innerHTML='<div class="empty2">'+r.mensaje+'</div>'; return; }
+      var claves=Object.keys(r.cxc).sort(function(a,b){return r.cxc[b]-r.cxc[a];});
+      if(!claves.length){ document.getElementById('cxcWrap').innerHTML='<div class="empty2">Sin saldos pendientes.</div>'; return; }
+      window._cxcClientes=claves;
+      var h='';
+      claves.forEach(function(c,i){
+        h+='<div class="card" style="padding:11px 13px;margin-bottom:8px">'
+          +'<div class="kFila cxcRow" style="border-bottom:none;padding:0" onclick="toggleCobrosCliente('+i+')">'
+          +'<span>'+c+'</span><span style="font-weight:700;color:#b82020">$'+Math.round(r.cxc[c]).toLocaleString('es-AR')+'</span></div>'
+          +'<div id="cobrosDet_'+i+'" class="cxcDet" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #eee"></div>'
+          +'</div>';
+      });
+      document.getElementById('cxcWrap').innerHTML=h;
+    })
+    .withFailureHandler(function(e){ document.getElementById('cxcWrap').innerHTML='Error: '+e.message; })
+    .getCXCParaPedido(TOKEN);
+}
+function toggleCobrosCliente(i){
+  var det=document.getElementById('cobrosDet_'+i);
+  var abierto = det.style.display==='block';
+  // cierra cualquier otro detalle abierto — solo uno expandido a la vez
+  document.querySelectorAll('[id^="cobrosDet_"]').forEach(function(el){ el.style.display='none'; });
+  if(abierto) return;
+  det.style.display='block';
+  var cliente=window._cxcClientes[i];
+  if(cobrosCache[cliente]){ renderCobrosDet(det, cobrosCache[cliente]); return; }
+  det.innerHTML='Cargando últimos cobros…';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ det.innerHTML='<span style="color:#b82020">'+r.mensaje+'</span>'; return; }
+      cobrosCache[cliente]=r.cobros;
+      renderCobrosDet(det, r.cobros);
+    })
+    .withFailureHandler(function(e){ det.innerHTML='Error: '+e.message; })
+    .getUltimosCobrosCliente(cliente, TOKEN);
+}
+function renderCobrosDet(det, cobros){
+  if(!cobros.length){ det.innerHTML='<span style="color:#888">Sin cobros registrados para este cliente.</span>'; return; }
+  var h='<div style="font-weight:700;color:#5a6580;margin-bottom:5px">Últimos '+cobros.length+' cobro(s)</div>';
+  cobros.forEach(function(c){
+    h+='<div class="linea"><span>'+c.fecha+' · '+(c.formaPago||'—')+'</span><span>$'+Math.round(c.neto||c.monto).toLocaleString('es-AR')+'</span></div>';
+  });
+  det.innerHTML=h;
+}
+
+// ── CONFIG PINES (solo CFO) ────────────────────────────────────────
+function cargarConfigPines(){
+  var roles=['vendedor','gerente','dueno','cfo'];
+  var h='';
+  roles.forEach(function(r){
+    h+='<div class="field"><label>PIN — '+NOMBRES_ROL[r]+'</label>'
+      +'<div style="display:flex;gap:8px">'
+      +'<input type="text" id="pinCfg_'+r+'" placeholder="Nuevo PIN">'
+      +'<button class="b2" style="flex:none;padding:8px 14px" onclick="guardarPinRol(\''+r+'\')">Guardar</button>'
+      +'</div></div>';
+  });
+  document.getElementById('pinCfgWrap').innerHTML=h;
+}
+function guardarPinRol(rol){
+  var inp=document.getElementById('pinCfg_'+rol);
+  var nuevo=inp.value.trim();
+  if(!nuevo){ showMsg('msgConfig','Ingresá un PIN nuevo.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){ sp(false); showMsg('msgConfig',r.mensaje,r.ok); if(r.ok) inp.value=''; })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgConfig','Error: '+e.message,false); })
+    .cambiarPinRol(rol, TOKEN, nuevo);
+}
+
+// ── helper de mensajes por vista (formUXJS trae v()/sp() globales;
+//    show() de formUXJS asume un único #msg — acá hay varios por tab,
+//    así que se usa este en su lugar) ──────────────────────────────
+function showMsg(id,txt,ok){
+  var el=document.getElementById(id); if(!el) return;
+  el.innerHTML=(ok?'✅ ':'⚠️ ')+txt; el.className='msg '+(ok?'ok':'er'); el.style.display='block';
+  if(ok) setTimeout(function(){el.style.display='none';},5000);
+}
+</script>
+</body>
+</html>
