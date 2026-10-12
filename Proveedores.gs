@@ -1,4 +1,3 @@
-// Proveedores.gs
 // ═══════════════════════════════════════════════════════════════
 // AÑAÑAI · Proveedores.gs
 // Formularios de Gastos y Pago a Proveedores
@@ -88,8 +87,8 @@ function getChequesEmitidosPendientes() {
 function buildFormGastoHTML(provs) {
   var provOpts = ['<option value="">— Sin proveedor —</option>']
     .concat(provs.map(function(p){
-      return '<option value="'+p.nombre+'" data-cond="'+p.condicion
-             +'" data-dias="'+p.diasPago+'">'+p.nombre+'</option>';
+      return '<option value="'+_escH_(p.nombre)+'" data-cond="'+_escH_(p.condicion)
+             +'" data-dias="'+_escH_(p.diasPago)+'">'+_escH_(p.nombre)+'</option>';
     })).join('');
 
   // Build taxonomy dropdowns
@@ -102,7 +101,7 @@ function buildFormGastoHTML(provs) {
   });
 
   var grupoOpts = grupos.map(function(g){
-    return '<option value="'+g+'">'+g+'</option>';
+    return '<option value="'+_escH_(g)+'">'+_escH_(g)+'</option>';
   }).join('');
 
   var css = sharedFormCSS();
@@ -112,10 +111,11 @@ function buildFormGastoHTML(provs) {
     '.capex-warn.show{display:block}',
     '.hint-sub{font-size:10.5px;color:var(--muted,#888);font-style:italic;margin-top:4px;display:none}',
     '.hint-sub.show{display:block}',
+    '.miniform{background:#f5f7fa;border:1px dashed #c7d0e3;border-radius:8px;padding:10px;margin-top:8px}',
   ].join('');
 
   var js = [
-    'var SUB_MAP='+JSON.stringify(subMap)+';',
+    'var SUB_MAP='+_jsonScript_(subMap)+';',
     'function onGrupoChange(){',
     '  var g=v("grupoSel"); var sub=document.getElementById("subSel");',
     '  sub.innerHTML=\'<option value="">— Seleccioná —</option>\';',
@@ -147,6 +147,37 @@ function buildFormGastoHTML(provs) {
     '  document.getElementById("condSel").value=cond;',
     '  document.getElementById("diasInp").value=dias;',
     '  onCondChange();',
+    '}',
+    'function toggleNuevoProv(){',
+    '  var m=document.getElementById("miniProv");',
+    '  var showing=m.style.display!=="none";',
+    '  m.style.display=showing?"none":"block";',
+    '  if(!showing) document.getElementById("provNomInp").focus();',
+    '}',
+    'function guardarProveedorRapido(){',
+    '  var nom=document.getElementById("provNomInp").value.trim();',
+    '  if(!nom){show("Completá el nombre del proveedor",false);return;}',
+    '  var cond=document.getElementById("provCondInp").value;',
+    '  var dias=document.getElementById("provDiasInp").value||0;',
+    '  sp(true);',
+    '  google.script.run',
+    '    .withSuccessHandler(function(r){',
+    '      sp(false);',
+    '      if(!r.ok){show(r.mensaje,false);return;}',
+    '      var opt=document.createElement("option");',
+    '      opt.value=nom;',
+    '      opt.setAttribute("data-cond",cond);',
+    '      opt.setAttribute("data-dias",dias);',
+    '      opt.textContent=nom;',
+    '      document.getElementById("provSel").appendChild(opt);',
+    '      document.getElementById("provSel").value=opt.value;',
+    '      onProvChange();',
+    '      document.getElementById("provNomInp").value="";',
+    '      toggleNuevoProv();',
+    '      show(r.mensaje,true);',
+    '    })',
+    '    .withFailureHandler(function(e){sp(false);show("Error: "+e.message,false);})',
+    '    .guardarProveedorNuevo({nombre:nom,condicion:cond,diasPago:dias});',
     '}',
     'function onCondChange(){',
     '  var cond=v("condSel");',
@@ -204,8 +235,19 @@ function buildFormGastoHTML(provs) {
     +'<input type="text" id="descInp" placeholder="Detalle del gasto…"></div>'
 
     // Proveedor
-    +'<div class="field" id="provWrap"><label>Proveedor</label>'
-    +'<select id="provSel" onchange="onProvChange()">'+provOpts+'</select></div>'
+    +'<div class="field" id="provWrap"><label>Proveedor '
+    +'<a href="#" onclick="toggleNuevoProv();return false" style="float:right;text-transform:none;letter-spacing:normal;font-weight:600;color:#2F5496;font-size:11px">+ Nuevo proveedor</a></label>'
+    +'<select id="provSel" onchange="onProvChange()">'+provOpts+'</select>'
+    +'<div class="miniform" id="miniProv" style="display:none">'
+    +'<input type="text" id="provNomInp" placeholder="Nombre del proveedor nuevo">'
+    +'<div class="r2" style="margin-top:6px">'
+    +'<select id="provCondInp"><option value="Contado">Contado</option><option value="Cuenta corriente">Cuenta corriente</option></select>'
+    +'<input type="number" id="provDiasInp" placeholder="Días pago" min="0" value="0">'
+    +'</div>'
+    +'<div class="btns" style="margin-top:8px">'
+    +'<button type="button" class="b1" style="background:#2F5496" onclick="guardarProveedorRapido()">Agregar y usar</button>'
+    +'<button type="button" class="b2" onclick="toggleNuevoProv()">Cancelar</button>'
+    +'</div></div></div>'
 
     // Monto
     +'<div class="field"><label>Monto ($)<span class="req">*</span></label>'
@@ -248,8 +290,8 @@ function buildFormPagoHTML(provs, cxp) {
     .concat(provs.filter(function(p){ return p.condicion !== 'Interno'; })
     .map(function(p){
       var saldo = cxp[p.nombre] ? ' — CXP: $'+Math.round(cxp[p.nombre]).toLocaleString('es-AR') : '';
-      return '<option value="'+p.nombre+'" data-cxp="'+(cxp[p.nombre]||0)+'">'
-             +p.nombre+saldo+'</option>';
+      return '<option value="'+_escH_(p.nombre)+'" data-cxp="'+_escH_(cxp[p.nombre]||0)+'">'
+             +_escH_(p.nombre)+saldo+'</option>';
     })).join('');
 
   var css = sharedFormCSS();
@@ -261,9 +303,14 @@ function buildFormPagoHTML(provs, cxp) {
     '  var cxpV=Number(opt.getAttribute("data-cxp"))||0;',
     '  var hint=document.getElementById("hintCXP");',
     '  if(!sel.value){hint.style.display="none";return;}',
-    '  hint.textContent=cxpV>0?"Saldo CXP: $"+Math.round(cxpV).toLocaleString("es-AR"):"✓ Sin saldo pendiente en cta. cte.";',
+    '  hint.innerHTML=cxpV>0',
+    '    ?\'<div class="hs-lbl">Saldo CXP</div><div class="hs-val">$\'+Math.round(cxpV).toLocaleString("es-AR")+\'</div>\'',
+    '    :\'<div class="hs-ok">✓ Sin saldo pendiente en cta. cte.</div>\';',
     '  hint.style.display="block";',
+    '  hint.style.background=cxpV>0?"#fff4e6":"#e8f8ef";',
+    '  hint.style.borderColor=cxpV>0?"#f0c070":"#a0d8b8";',
     '  hint.style.borderLeftColor=cxpV>0?"#e07020":"#27ae60";',
+    '  hint.style.color=cxpV>0?"#a05010":"#1a7a40";',
     '}',
     'function onFormaChange(){',
     '  var f=v("formaSel");',
@@ -302,9 +349,9 @@ function buildFormPagoHTML(provs, cxp) {
 
     +'<div class="field"><label>Proveedor<span class="req">*</span></label>'
     +'<select id="provSel" onchange="onProvChange()">'+provOpts+'</select>'
-    +'<div id="hintCXP" style="display:none;margin-top:5px;padding:7px 10px;'
+    +'<div id="hintCXP" class="hint-saldo" style="display:none;'
     +'background:#fff4e6;border:1px solid #f0c070;border-left:4px solid #e07020;'
-    +'border-radius:5px;font-size:11.5px;font-weight:600;color:#a05010"></div></div>'
+    +'color:#a05010"></div></div>'
 
     +'<div class="field"><label>Monto ($)<span class="req">*</span></label>'
     +'<input type="number" id="montoInp" min="1" placeholder="0" '
@@ -352,9 +399,9 @@ function buildFormConfirmarDebitoHTML(pendientes) {
   }
 
   var opts = pendientes.map(function(p){
-    return '<option value="'+p.pagId+'">'+p.pagId+' · '+p.prov
+    return '<option value="'+_escH_(p.pagId)+'">'+_escH_(p.pagId)+' · '+_escH_(p.prov)
            +' · $'+Math.round(p.monto).toLocaleString('es-AR')
-           +' · Vence: '+p.venc+'</option>';
+           +' · Vence: '+_escH_(p.venc)+'</option>';
   }).join('');
 
   var css = sharedFormCSS();
@@ -453,6 +500,10 @@ function sharedFormCSS() {
     '.msg.ok{background:#e8f8ef;color:#1a7a40;border:1px solid #a0d8b8}',
     '.msg.er{background:#fde8e8;color:#b82020;border:1px solid #f0b0b0}',
     '.sp{display:none;text-align:center;padding:7px;color:#5a6580;font-size:11px}',
+    '.hint-saldo{margin-top:6px;padding:11px 13px;border-radius:6px}',
+    '.hint-saldo .hs-lbl{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;opacity:.85;margin-bottom:3px}',
+    '.hint-saldo .hs-val{font-size:23px;font-weight:800;line-height:1.15;letter-spacing:-.01em}',
+    '.hint-saldo .hs-ok{font-size:14px;font-weight:700}',
     ':root{--muted:#888}',
   ].join('') + formUXCSS();
 }

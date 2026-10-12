@@ -361,6 +361,13 @@ function doGet(e) {
     .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
     .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
+  if (page === 'gerente') {
+    var tGer = HtmlService.createTemplateFromFile('GerentePanel');
+    return tGer.evaluate()
+      .setTitle('AÑAÑAI · Gerente')
+      .addMetaTag('viewport', 'width=device-width, initial-scale=1.0')
+      .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
+  }
   // ── NUEVO: calendario de producción (sin login, solo lectura, sin precios) ──
   if (page === 'calendario') {
     var tCal = HtmlService.createTemplateFromFile('CalendarioProduccion');
@@ -543,7 +550,20 @@ function getProductos() {
 // (en vez de 3 llamadas separadas). Misma fuente de datos que usa el
 // formulario de Despacho — ver FLAVORS y ANANAI_PRECIOS arriba.
 function getCatalogoParaPedidos() {
-  return { productos: getProductos(), flavors: FLAVORS, ananaiPrecios: ANANAI_PRECIOS, umbral: UMBRAL_P1 };
+  return { productos: getProductos(), flavors: _flavorsVigentes_(), ananaiPrecios: _ananaiVigentes_(), umbral: UMBRAL_P1 };
+}
+
+// Sabores y precios Añañai "vigentes": los de siempre (FLAVORS y ANANAI_PRECIOS,
+// arriba) más lo que se haya editado desde el panel de Productos (precio propio de
+// un sabor / precio Añañai) — ver ProductosConfig.gs. Si ese archivo no está
+// pegado todavía, o falla algo, devuelven EXACTAMENTE los de siempre.
+function _flavorsVigentes_() {
+  try { if (typeof getFlavorsEfectivos_ === 'function') return getFlavorsEfectivos_(); } catch (e) {}
+  return FLAVORS;
+}
+function _ananaiVigentes_() {
+  try { if (typeof getAnanaiPrecios_ === 'function') return getAnanaiPrecios_(); } catch (e) {}
+  return ANANAI_PRECIOS;
 }
 
 // Acumulado de unidades del cliente en el mes actual
@@ -568,7 +588,10 @@ function getAcumuladoMes(cliId) {
 
 // Normaliza texto: trim + minúsculas + sin acentos (para comparar condición/estado)
 function _norm(s) {
-  return String(s == null ? '' : s).trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  // El replace(/^'/, '') es parte del neutralizador de fórmulas (_sanTxt_ en
+  // Produccion.gs): un texto guardado como "'=algo" y el mismo texto sin
+  // apóstrofe tienen que compararse como iguales.
+  return String(s == null ? '' : s).trim().replace(/^'/, '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
 }
 
 // CXC pendiente por cliente
@@ -787,6 +810,7 @@ function genId(prefijo, hoja_nombre) {
 // ════════════════════════════════════════════════════════════════
 function guardarDespacho(datos) {
   try {
+    datos = _sanObj_(datos || {}); // neutraliza "=..." en cliente / obs / motivo (ver _sanTxt_ en Produccion.gs)
     var unidades = Number(datos.unidades);
 
     // ── resolver SKU y validar/restar stock ANTES de guardar nada ──
@@ -868,6 +892,7 @@ function guardarDespacho(datos) {
 // ════════════════════════════════════════════════════════════════
 function guardarCobro(datos) {
   try {
+    datos = _sanObj_(datos || {}); // neutraliza "=..." en cliente / referencia / obs (ver _sanTxt_ en Produccion.gs)
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_COBROS);
 
@@ -930,6 +955,7 @@ function guardarCobro(datos) {
 // ════════════════════════════════════════════════════════════════
 function guardarNC(datos) {
   try {
+    datos = _sanObj_(datos || {}); // neutraliza "=..." en cliente / motivo (ver _sanTxt_ en Produccion.gs)
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_NC);
 
@@ -999,7 +1025,7 @@ function _anularDespacho_(desId, motivo) {
       if (estadoActual === 'Anulado') return { ok: false, mensaje: desId + ' ya estaba anulado.' };
       var obsActual = raw[i][13] || '';
       hoja.getRange(fila, 13).setValue('Anulado');
-      hoja.getRange(fila, 14).setValue((obsActual ? obsActual + ' · ' : '') + '⚠ ANULADO — ' + motivo);
+      hoja.getRange(fila, 14).setValue(_sanTxt_((obsActual ? obsActual + ' · ' : '') + '⚠ ANULADO — ' + motivo));
       return { ok: true };
     }
   }
@@ -1011,6 +1037,7 @@ function _anularDespacho_(desId, motivo) {
 // ════════════════════════════════════════════════════════════════
 function guardarClienteNuevo(datos) {
   try {
+    datos = _sanObj_(datos || {}); // neutraliza "=..." en el nombre (ver _sanTxt_ en Produccion.gs)
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_CLIENTES);
     var last = hoja.getLastRow();
@@ -1070,7 +1097,7 @@ function buildCXCHTML(clientes, cxc) {
     .sort(function(a,b){ return (cxc[b]||0)-(cxc[a]||0); })
     .map(function(nombre){
       var v = cxc[nombre]||0;
-      return '<tr><td>'+nombre+'</td><td style="text-align:right;font-weight:700;color:#2F5496">$'+
+      return '<tr><td>'+_escH_(nombre)+'</td><td style="text-align:right;font-weight:700;color:#2F5496">$'+
              v.toLocaleString('es-AR')+'</td></tr>';
     }).join('');
 
@@ -1226,6 +1253,18 @@ function abrirFormPrecio() {
   );
 }
 
+// ═══════════════════════════════════════
+// HELPERS DE ESCAPADO (anti-XSS) — se usan al armar los formularios HTML
+// ═══════════════════════════════════════
+// Escapa un texto para ponerlo dentro de HTML o de un atributo (value="...", data-x="...").
+function _escH_(s) {
+  return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+// JSON.stringify seguro para incrustar dentro de un <script>: un nombre con "</script>" no puede cerrar el bloque.
+function _jsonScript_(o) {
+  return JSON.stringify(o).replace(/</g,'\\u003c').replace(/>/g,'\\u003e').replace(/&/g,'\\u0026').replace(/\u2028/g,'\\u2028').replace(/\u2029/g,'\\u2029');
+}
+
 // ════════════════════════════════════════════════════════════════
 // HTML — CSS COMPARTIDO
 // ════════════════════════════════════════════════════════════════
@@ -1300,7 +1339,7 @@ function formUXJS() {
     // Flash de ✓ "¡Registrado!" por ~1.1s
     + 'function __flashOk(txt){var o=__ovlEnsure();var ic=document.getElementById("__ovlicon");var tx=document.getElementById("__ovltxt");ic.className="ovl-check";ic.textContent="\\u2713";tx.textContent=txt||"\\u00a1Registrado!";o.className="ovl show";setTimeout(function(){o.className="ovl";ic.className="ovl-spin";ic.textContent="";},1100);}'
     // show: banner prominente. En éxito dispara el flash ✓ y auto-oculta a los 6.5s
-    + 'function show(txt,ok){if(ok){__flashOk("\\u00a1Registrado!");}var el=document.getElementById("msg");if(el){el.innerHTML=(ok?"\\u2705 ":"\\u26a0\\ufe0f ")+txt;el.className="msg "+(ok?"ok":"er");el.style.display="block";try{el.scrollIntoView({behavior:"smooth",block:"nearest"});}catch(e){}if(ok){setTimeout(function(){el.style.display="none";},6500);}}}'
+    + 'function show(txt,ok){if(ok){__flashOk("\\u00a1Registrado!");}var el=document.getElementById("msg");if(el){el.textContent=(ok?"\\u2705 ":"\\u26a0\\ufe0f ")+txt;el.className="msg "+(ok?"ok":"er");el.style.display="block";try{el.scrollIntoView({behavior:"smooth",block:"nearest"});}catch(e){}if(ok){setTimeout(function(){el.style.display="none";},6500);}}}'
     + 'function v(id){return document.getElementById(id).value.trim();}'
     // Guardia de captura: mientras __busy, cualquier clic en botón se bloquea
     + 'document.addEventListener("click",function(e){if(!__busy){return;}var n=e.target;while(n&&n!==document){if(n.tagName==="BUTTON"){e.preventDefault();e.stopPropagation();return;}n=n.parentNode;}},true);';
@@ -1311,7 +1350,7 @@ function formUXJS() {
 // ════════════════════════════════════════════════════════════════
 function buildFormDespachoHTML(clientes, productos) {
   var cliOpts = clientes.map(function(c){
-    return '<option value="'+c.id+'" data-nombre="'+c.nombre+'" data-cond="'+c.condicion+'">'+c.nombre+'</option>';
+    return '<option value="'+_escH_(c.id)+'" data-nombre="'+_escH_(c.nombre)+'" data-cond="'+_escH_(c.condicion)+'">'+_escH_(c.nombre)+'</option>';
   }).join('');
 
   // Mapa de productos para el JS: {clave: {pLibre, p1, unidad, tienePrecio, nombre, variante}}
@@ -1328,7 +1367,7 @@ function buildFormDespachoHTML(clientes, productos) {
     if (prodNombres.indexOf(p.nombre) === -1) prodNombres.push(p.nombre);
   });
   var prodNombreOpts = prodNombres.map(function(n){
-    return '<option value="'+n+'">'+n+'</option>';
+    return '<option value="'+_escH_(n)+'">'+_escH_(n)+'</option>';
   }).join('');
 
   // ── SABORES por producto con tier oculto (Tartines / Pizzas) ──
@@ -1416,9 +1455,9 @@ function buildFormDespachoHTML(clientes, productos) {
 
     // ═══════════════ JS ═══════════════
     + '<script>'
-    + 'var PROD_MAP=' + JSON.stringify(prodMap) + ';'
-    + 'var ANANAI_MAP=' + JSON.stringify(ANANAI_PRECIOS) + ';'
-    + 'var FLAVORS=' + JSON.stringify(FLAVORS) + ';'
+    + 'var PROD_MAP=' + _jsonScript_(prodMap) + ';'
+    + 'var ANANAI_MAP=' + _jsonScript_(_ananaiVigentes_()) + ';'
+    + 'var FLAVORS=' + _jsonScript_(_flavorsVigentes_()) + ';'
     + 'var UMBRAL=' + UMBRAL_P1 + ';'
     + 'var acumMes=0; var esAnanai=false;'
 
@@ -1633,7 +1672,7 @@ function buildFormDespachoHTML(clientes, productos) {
     + '      sp(false);'
     + '      if(!r.ok && r.necesitaConfirmacion){'
     + '        pendienteForzar=payload;'
-    + '        document.getElementById("txtForzar").innerHTML="⚠ "+r.mensaje+" Si confirmás, la venta se guarda igual y el stock puede quedar en negativo — va a quedar anotado en la hoja \'Alertas Stock\' para revisar después.";'
+    + '        document.getElementById("txtForzar").textContent="⚠ "+r.mensaje+" Si confirmás, la venta se guarda igual y el stock puede quedar en negativo — va a quedar anotado en la hoja \'Alertas Stock\' para revisar después.";'
     + '        var wf=document.getElementById("wrapForzar"); wf.style.display="block";'
     + '        wf.scrollIntoView({behavior:"smooth",block:"nearest"});'
     + '        return;'
@@ -1686,7 +1725,7 @@ function buildFormDespachoHTML(clientes, productos) {
 function buildFormCobroHTML(clientes, cxc) {
   var cliOpts = clientes.map(function(c){
     var saldo = cxc[c.nombre] ? ' — CXC: $'+Math.round(cxc[c.nombre]).toLocaleString('es-AR') : '';
-    return '<option value="'+c.id+'" data-nombre="'+c.nombre+'" data-cxc="'+(cxc[c.nombre]||0)+'">'+c.nombre+saldo+'</option>';
+    return '<option value="'+_escH_(c.id)+'" data-nombre="'+_escH_(c.nombre)+'" data-cxc="'+_escH_(cxc[c.nombre]||0)+'">'+_escH_(c.nombre)+saldo+'</option>';
   }).join('');
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
@@ -1783,7 +1822,7 @@ function buildFormCobroHTML(clientes, cxc) {
 // ════════════════════════════════════════════════════════════════
 function buildFormNCHTML(clientes) {
   var cliOpts = clientes.map(function(c){
-    return '<option value="'+c.id+'" data-nombre="'+c.nombre+'">'+c.nombre+'</option>';
+    return '<option value="'+_escH_(c.id)+'" data-nombre="'+_escH_(c.nombre)+'">'+_escH_(c.nombre)+'</option>';
   }).join('');
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">'
@@ -1890,7 +1929,7 @@ function buildFormPrecioHTML(productos) {
   var opts = productos.map(function(p){
     var label = p.nombre + (p.variante ? ' — '+p.variante : '');
     var suffix = p.tienePrecio ? '' : ' ⚠ sin precio';
-    return '<option value="'+label+'" data-nombre="'+p.nombre+'" data-var="'+p.variante+'" data-plibre="'+(p.pLibre||'')+'" data-p1="'+(p.p1||'')+'">'+label+suffix+'</option>';
+    return '<option value="'+_escH_(label)+'" data-nombre="'+_escH_(p.nombre)+'" data-var="'+_escH_(p.variante)+'" data-plibre="'+_escH_(p.pLibre||'')+'" data-p1="'+_escH_(p.p1||'')+'">'+_escH_(label)+suffix+'</option>';
   }).join('');
 
   return '<!DOCTYPE html><html><head><meta charset="UTF-8">'

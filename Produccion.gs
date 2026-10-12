@@ -14,7 +14,7 @@ var H_STOCK        = 'Stock';
 var H_PRODUCCIONES = 'Produccion_Produccion';  // nombre real de la pestaña en el sandbox
 
 var ENCABEZADOS_CATALOGO = [
-  'SKU', 'Nombre canónico', 'Categoría', 'Tipo', 'Unidad de producción', 'Unidad de despacho', 'Factor equivalencia'
+  'SKU', 'Nombre canónico', 'Categoría', 'Tipo', 'Unidad de producción', 'Unidad de despacho', 'Factor equivalencia', 'Stock mínimo'
 ];
 var ENCABEZADOS_ALIAS = ['Texto crudo', 'SKU'];
 var ENCABEZADOS_STOCK = [
@@ -283,6 +283,15 @@ function ensureHojaCatalogo_() {
     ws.setRowHeight(2, 30);
     ws.setFrozenRows(2);
   }
+  // Migración aditiva: si el Catálogo ya existía desde antes de que esta
+  // columna se agregara, el bloque de arriba no corre de nuevo (el header
+  // ya dice 'SKU') — así que acá se suma SOLO el rótulo que falte al
+  // final, sin tocar ninguna columna existente.
+  var colMin = ENCABEZADOS_CATALOGO.length; // 8 = 'Stock mínimo'
+  if (ws.getRange(2, colMin).getValue() !== ENCABEZADOS_CATALOGO[colMin - 1]) {
+    ws.getRange(2, colMin).setValue(ENCABEZADOS_CATALOGO[colMin - 1]);
+    ws.getRange(2, colMin).setFontWeight('bold').setFontColor('#ffffff').setBackground('#2F6B4F');
+  }
   var existentes = {};
   var last = ws.getLastRow();
   if (last >= DATA_ROW) {
@@ -290,7 +299,15 @@ function ensureHojaCatalogo_() {
       if (r[0]) existentes[String(r[0]).trim()] = true;
     });
   }
-  var faltantes = CATALOGO_DATA.filter(function(r) { return !existentes[r[0]]; });
+  var faltantes = CATALOGO_DATA.filter(function(r) { return !existentes[r[0]]; }).map(function(r) {
+    // Completa con '' cualquier columna nueva que las filas de
+    // CATALOGO_DATA todavía no tengan (hoy, "Stock mínimo"), para que el
+    // ancho siempre coincida con ENCABEZADOS_CATALOGO.length sin tener
+    // que tocar cada fila de esa lista a mano.
+    var fila = r.slice();
+    while (fila.length < ENCABEZADOS_CATALOGO.length) fila.push('');
+    return fila;
+  });
   if (faltantes.length) {
     var fila = Math.max(DATA_ROW, ws.getLastRow() + 1);
     ws.getRange(fila, 1, faltantes.length, ENCABEZADOS_CATALOGO.length).setValues(faltantes);
@@ -370,11 +387,50 @@ function _catalogoPorSku_(sku) {
         tipo: filas[i][3],
         unidadProduccion: filas[i][4],
         unidadDespacho: filas[i][5],
-        factor: filas[i][6] === '' ? null : Number(filas[i][6])
+        factor: filas[i][6] === '' ? null : Number(filas[i][6]),
+        minimo: filas[i][7] === '' || filas[i][7] == null ? null : Number(filas[i][7])
       };
     }
   }
   return null;
+}
+
+// Edita el stock mínimo de un insumo ya existente (el campo se carga al
+// crearlo con crearInsumoNuevo, pero el Gerente tiene que poder ajustarlo
+// después sin recrear el insumo — ej. subió el consumo y el mínimo viejo
+// ya quedó corto). minimo='' o null limpia la configuración (vuelve a
+// "sin mínimo configurado", mismo estado que un insumo recién creado sin
+// el campo completado).
+function actualizarMinimoInsumo(sku, minimo, token) {
+  var chk = _requiereRol_(token, ['gerente', 'dueno']);
+  if (!chk.ok) return chk;
+
+  sku = String(sku || '').trim();
+  if (!sku) return { ok: false, mensaje: 'Falta el SKU del insumo.' };
+
+  return _conLock_(function() {
+    var ws = ensureHojaCatalogo_();
+    var last = ws.getLastRow();
+    if (last < DATA_ROW) return { ok: false, mensaje: 'El Catálogo está vacío.' };
+
+    var columnaSku = ws.getRange(DATA_ROW, 1, last - DATA_ROW + 1, 1).getValues();
+    for (var i = 0; i < columnaSku.length; i++) {
+      if (String(columnaSku[i][0]).trim() === sku) {
+        var fila = DATA_ROW + i;
+        var tipo = ws.getRange(fila, 4).getValue();
+        if (String(tipo).trim() !== 'Insumo') {
+          return { ok: false, mensaje: 'El SKU "' + sku + '" no es un insumo.' };
+        }
+        var valor = (minimo === '' || minimo == null) ? '' : Number(minimo);
+        if (valor !== '' && (!(valor >= 0) || !isFinite(valor))) {
+          return { ok: false, mensaje: 'El stock mínimo tiene que ser un número mayor o igual a 0.' };
+        }
+        ws.getRange(fila, ENCABEZADOS_CATALOGO.length).setValue(valor);
+        return { ok: true, sku: sku, minimo: valor === '' ? null : valor, mensaje: '✅ Stock mínimo actualizado.' };
+      }
+    }
+    return { ok: false, mensaje: 'No se encontró el insumo "' + sku + '" en el Catálogo.' };
+  });
 }
 
 // Busca el SKU de un texto crudo de Producción/Despachos en la hoja Alias.
@@ -443,6 +499,21 @@ function _moverStock_(sku, tipo, cantidad, opts) {
   if (tipo === 'produccion') {
     var factor = cat.factor || 1;
     delta = Number(cantidad) / factor; // la merma NO se resta acá (ver comentario de arriba)
+  } else if (tipo === 'compra') {
+    // ── AÑAÑAI · ETAPA 2 ── compra de insumo: suma directo, sin conversión
+    // de factor (los insumos no tienen factor de equivalencia) y sin
+    // control de "stock suficiente" (comprar siempre suma, nunca hay nada
+    // que rechazar). Queda igual que 'produccion' pero etiquetado distinto
+    // en el historial de Movimientos Stock, para no confundir una compra
+    // con una producción real. La usa registrarCompraItemizada() del
+    // módulo nuevo de Compras.
+    delta = Number(cantidad);
+    // ── AUDITORÍA H4 ── última barrera: una compra siempre SUMA. Un valor
+    // 0, negativo, NaN o Infinity (llamada directa o dato corrupto) se
+    // rechaza acá sin tocar la hoja.
+    if (!(delta > 0) || !isFinite(delta)) {
+      return { ok: false, mensaje: 'La cantidad de una compra tiene que ser un número mayor a 0 (llegó "' + cantidad + '").' };
+    }
   } else if (tipo === 'despacho') {
     if (cat.tipo === 'Insumo') return { ok: false, mensaje: 'El SKU "' + sku + '" es un insumo, no tiene equivalencia de despacho.' };
     delta = -Number(cantidad);
@@ -459,6 +530,18 @@ function _moverStock_(sku, tipo, cantidad, opts) {
     }
     // opts.forzar=true → seguimos igual; el stock puede quedar negativo a
     // propósito, como señal visible de que hay que revisar/corregir después.
+  } else if (tipo === 'consumo') {
+    // ── AÑAÑAI · consumo de insumo por receta ── se dispara al registrar
+    // una producción (ver consumirInsumosPorReceta_ más abajo), nunca
+    // desde Despachos ni desde un Ajuste manual. A diferencia de
+    // 'despacho', JAMÁS rechaza por falta de stock: la cantidad exacta a
+    // descontar ya viene decidida por quien llama (reparto FIFO entre las
+    // marcas de una misma familia, incluido el eventual faltante que se
+    // deja en negativo a propósito como señal de que hay que reponer ese
+    // insumo) — bloquear acá dejaría la producción ya cargada con el
+    // stock del producto terminado sumado pero sin su consumo de insumos,
+    // que es peor que dejarlo en negativo y avisar.
+    delta = -Number(cantidad);
   } else if (tipo === 'ajuste') {
     // Auditoría semanal: "cantidad" acá es el STOCK REAL declarado (un valor
     // absoluto, no un delta) — se usa para pisar el número del sistema con
@@ -480,7 +563,7 @@ function _moverStock_(sku, tipo, cantidad, opts) {
 
   if (!fila) {
     fila = Math.max(DATA_ROW, last + 1);
-    ws.getRange(fila, 1, 1, 2).setValues([[sku, cat.nombre]]);
+    ws.getRange(fila, 1, 1, 2).setValues([[sku, _sanTxt_(cat.nombre)]]); // el nombre viene del Catálogo: se vuelve a neutralizar al reescribirlo
   }
   ws.getRange(fila, 3).setValue(nuevoStock);
   ws.getRange(fila, 4).setValue(cat.unidadDespacho || cat.unidadProduccion);
@@ -492,7 +575,7 @@ function _moverStock_(sku, tipo, cantidad, opts) {
   // Historial completo: la hoja Stock de arriba solo guarda el ÚLTIMO
   // movimiento por SKU (lo pisa cada vez); acá queda cada movimiento por
   // separado, para el historial de la pantalla de Stock.
-  var TIPO_LABEL = { produccion: 'Producción', despacho: 'Despacho', ajuste: 'Ajuste', correccion: 'Corrección' };
+  var TIPO_LABEL = { produccion: 'Producción', compra: 'Compra', despacho: 'Despacho', consumo: 'Consumo (receta)', ajuste: 'Ajuste', correccion: 'Corrección' };
   registrarMovimientoStock_({
     sku: sku, producto: cat.nombre,
     tipo: TIPO_LABEL[tipo] || tipo,
@@ -533,6 +616,245 @@ function restarStockPorDespacho_(producto, variante, unidadesDespachadas, opts) 
 }
 
 // ════════════════════════════════════════════════════════════════
+// CONSUMO DE INSUMOS POR RECETA — se dispara SOLO al registrar una
+// producción real (registrarProduccion, más abajo), nunca desde un
+// Despacho ni desde un Ajuste manual de auditoría semanal: un Despacho
+// es una venta del producto YA hecho (no usa materia prima de nuevo) y
+// un Ajuste es una corrección de conteo físico (no un evento de
+// consumo). El único momento en que tiene sentido "se usó materia
+// prima" es cuando alguien declara "hice X unidades" — por eso el
+// enganche es acá.
+//
+// Depende de _lineasDeReceta_() (NUEVO-Recetas.gs) y de la hoja
+// "Compras Insumos" (NUEVO-Compras.gs, vía ENCABEZADOS_COMPRAS_INSUMOS /
+// ensureHojaComprasInsumos_) — ambos archivos ya existen en el proyecto,
+// no hace falta tocarlos: viven en el mismo namespace de Apps Script,
+// así que sus funciones ya son visibles desde acá.
+//
+// CRITERIO DE REPARTO cuando una familia tiene varias marcas/SKU de
+// insumo cargadas (decidido junto con Gonzalo): FIFO por fecha de la
+// PRIMERA compra registrada de cada marca — se consume primero de la
+// marca que lleva más tiempo en stock. Una marca sin ninguna compra
+// itemizada (por ejemplo, si su stock inicial se cargó solo por un
+// Ajuste) no tiene fecha conocida y queda al final del orden, porque no
+// hay forma de saber qué tan vieja es esa existencia.
+//
+// Si ninguna marca de la familia tiene stock suficiente para cubrir lo
+// que pide la receta, el faltante se descuenta igual, dejando esa marca
+// en negativo a propósito — mismo criterio que ya usa Despachos con
+// "igual imputar": nunca se bloquea la producción ya registrada por un
+// problema del lado de los insumos, se avisa en el mensaje de vuelta
+// para que se revise y se reponga.
+
+// ── CONVERSIÓN DE UNIDADES (receta ↔ insumo) ──────────────────────
+// Tabla de unidades conocidas: a qué magnitud física pertenece cada una
+// (grupo) y su factor a la unidad base de ese grupo (gramos para masa,
+// mililitros para volumen). Incluye las variantes de texto más comunes
+// (con/sin tilde, singular/plural, abreviadas) porque tanto el campo
+// Unidad del insumo (texto libre, se carga a mano) como el de la receta
+// pueden escribirse de más de una forma.
+var _UNIDAD_INFO_ = {
+  // masa — base: gramos
+  'kg': { grupo: 'masa', factor: 1000 }, 'kgs': { grupo: 'masa', factor: 1000 },
+  'kilo': { grupo: 'masa', factor: 1000 }, 'kilos': { grupo: 'masa', factor: 1000 },
+  'kilogramo': { grupo: 'masa', factor: 1000 }, 'kilogramos': { grupo: 'masa', factor: 1000 },
+  'g': { grupo: 'masa', factor: 1 }, 'gr': { grupo: 'masa', factor: 1 }, 'grs': { grupo: 'masa', factor: 1 },
+  'gramo': { grupo: 'masa', factor: 1 }, 'gramos': { grupo: 'masa', factor: 1 },
+  // volumen — base: mililitros
+  'l': { grupo: 'volumen', factor: 1000 }, 'lt': { grupo: 'volumen', factor: 1000 }, 'lts': { grupo: 'volumen', factor: 1000 },
+  'litro': { grupo: 'volumen', factor: 1000 }, 'litros': { grupo: 'volumen', factor: 1000 },
+  'ml': { grupo: 'volumen', factor: 1 }, 'cc': { grupo: 'volumen', factor: 1 },
+  'mililitro': { grupo: 'volumen', factor: 1 }, 'mililitros': { grupo: 'volumen', factor: 1 },
+  // conteo — cada token es su propio grupo: NO hay factor universal entre
+  // "unidad" y "paquete" (el tamaño de un paquete varía según el insumo),
+  // así que acá nunca se convierte, solo se exige coincidencia exacta.
+  'unidad': { grupo: 'conteo-unidad', factor: 1 }, 'unidades': { grupo: 'conteo-unidad', factor: 1 },
+  'u': { grupo: 'conteo-unidad', factor: 1 }, 'un': { grupo: 'conteo-unidad', factor: 1 },
+  'paquete': { grupo: 'conteo-paquete', factor: 1 }, 'paquetes': { grupo: 'conteo-paquete', factor: 1 }
+};
+
+function _normalizarUnidad_(texto) {
+  return String(texto == null ? '' : texto).trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, ''); // saca tildes (ej. "unidád" -> "unidad")
+}
+
+// Convierte "cantidad" (en unidadOrigen) a unidadDestino. Si alguna de
+// las dos viene vacía, o son la misma unidad (con distinta tilde/mayúscula/
+// plural), no hace falta convertir — se devuelve tal cual. Si pertenecen a
+// magnitudes distintas (ej. masa vs. conteo) devuelve ok:false en vez de
+// inventar un número: mejor avisar que descontar mal.
+function _convertirCantidad_(cantidad, unidadOrigen, unidadDestino) {
+  var uO = _normalizarUnidad_(unidadOrigen);
+  var uD = _normalizarUnidad_(unidadDestino);
+  if (!uO || !uD || uO === uD) return { ok: true, cantidad: cantidad };
+
+  var infoO = _UNIDAD_INFO_[uO];
+  var infoD = _UNIDAD_INFO_[uD];
+  if (!infoO || !infoD || infoO.grupo !== infoD.grupo) {
+    return {
+      ok: false,
+      mensaje: 'no se puede convertir automáticamente de "' + unidadOrigen + '" a "' + unidadDestino + '" (unidades no relacionadas)'
+    };
+  }
+  var enBase = cantidad * infoO.factor;
+  return { ok: true, cantidad: enBase / infoD.factor };
+}
+
+// Interno — SKUs de insumo del Catálogo que pertenecen a una familia.
+function _insumosDeFamilia_(familia) {
+  var ws = ensureHojaCatalogo_();
+  var last = ws.getLastRow();
+  if (last < DATA_ROW) return [];
+  var filas = ws.getRange(DATA_ROW, 1, last - DATA_ROW + 1, ENCABEZADOS_CATALOGO.length).getValues();
+  var out = [];
+  filas.forEach(function(r) {
+    if (String(r[3]).trim() !== 'Insumo') return;
+    if (String(r[2] || '').trim() !== familia) return;
+    var sku = String(r[0]).trim();
+    if (!sku) return;
+    out.push({ sku: sku, nombre: r[1], unidad: r[4] });
+  });
+  return out;
+}
+
+// Interno — stock actual de un SKU, sin generar ningún movimiento (a
+// diferencia de _moverStock_, que siempre escribe). Devuelve 0 si el SKU
+// todavía no tiene ninguna fila en Stock (nunca tuvo un movimiento).
+function _leerStockActual_(sku) {
+  var ws = ensureHojaStock_();
+  var last = ws.getLastRow();
+  if (last < DATA_ROW) return 0;
+  var claves = ws.getRange(DATA_ROW, 1, last - DATA_ROW + 1, 1).getValues();
+  for (var i = 0; i < claves.length; i++) {
+    if (String(claves[i][0]).trim() === sku) {
+      return Number(ws.getRange(DATA_ROW + i, 3).getValue()) || 0;
+    }
+  }
+  return 0;
+}
+
+// Interno — fecha de la PRIMERA compra itemizada de cada SKU de insumo,
+// leyendo el ledger "Compras Insumos" (NUEVO-Compras.gs). Devuelve un
+// mapa { sku: timestamp }; un SKU sin ninguna compra registrada no
+// aparece en el mapa.
+function _fechaPrimeraCompraPorSku_() {
+  var ws = ensureHojaComprasInsumos_(); // NUEVO-Compras.gs
+  var last = ws.getLastRow();
+  var out = {};
+  if (last < DATA_ROW) return out;
+  var filas = ws.getRange(DATA_ROW, 1, last - DATA_ROW + 1, ENCABEZADOS_COMPRAS_INSUMOS.length).getValues();
+  filas.forEach(function(r) {
+    var sku = String(r[3] || '').trim();
+    if (!sku) return;
+    var fecha = r[0] instanceof Date ? r[0].getTime() : null;
+    if (fecha == null) return;
+    if (out[sku] == null || fecha < out[sku]) out[sku] = fecha;
+  });
+  return out;
+}
+
+// Descuenta de Stock los insumos que exige la receta de skuProducto, por
+// haber producido cantidadProducida unidades. Si el producto no tiene
+// receta cargada, no hace nada (devuelve sinReceta:true) — hoy la
+// inmensa mayoría de los productos no tienen receta todavía, y eso tiene
+// que seguir funcionando exactamente igual que antes de este cambio.
+// Nunca lanza una excepción hacia afuera: cualquier problema queda
+// reportado en "avisos", nunca revierte ni bloquea la producción que ya
+// se registró.
+function consumirInsumosPorReceta_(skuProducto, cantidadProducida) {
+  var avisos = [];
+  var movimientos = [];
+  var lineas;
+  try {
+    lineas = _lineasDeReceta_(skuProducto); // NUEVO-Recetas.gs
+  } catch (e) {
+    return { ok: true, sinReceta: true, movimientos: [], avisos: ['No se pudo leer la receta de ' + skuProducto + ': ' + e.message] };
+  }
+  if (!lineas || !lineas.length) return { ok: true, sinReceta: true, movimientos: [], avisos: [] };
+
+  var fechaPorSku = _fechaPrimeraCompraPorSku_();
+
+  lineas.forEach(function(linea) {
+    var necesario = Number(linea.cantidadPorUnidad) * Number(cantidadProducida);
+    if (!(necesario > 0)) return;
+
+    var marcas = _insumosDeFamilia_(linea.familia);
+    if (!marcas.length) {
+      avisos.push('Familia "' + linea.familia + '": no hay ningún insumo cargado en el Catálogo con esa familia — no se descontó nada.');
+      return;
+    }
+
+    marcas = marcas.slice().sort(function(a, b) {
+      var fa = fechaPorSku[a.sku], fb = fechaPorSku[b.sku];
+      if (fa == null && fb == null) return 0;
+      if (fa == null) return 1;   // sin fecha conocida → al final
+      if (fb == null) return -1;
+      return fa - fb;             // más antigua primero
+    });
+
+    // "restante" se mantiene siempre en la unidad de LA RECETA (linea.unidad)
+    // — nunca cambia de magnitud a mitad de camino. Recién al comparar
+    // contra el stock de una marca puntual se convierte a la unidad PROPIA
+    // de esa marca (ej. receta en "gramos" contra un insumo cargado en
+    // "kg"), y lo efectivamente consumido se vuelve a pasar a la unidad de
+    // la receta para seguir descontando el restante con el mismo criterio.
+    var restante = necesario;
+    var ultimoSku = null;
+    var huboErrorConversion = false;
+    for (var i = 0; i < marcas.length && restante > 0; i++) {
+      var sku = marcas[i].sku;
+      ultimoSku = sku;
+
+      var conv = _convertirCantidad_(restante, linea.unidad, marcas[i].unidad);
+      if (!conv.ok) {
+        avisos.push('Familia "' + linea.familia + '" (' + sku + '): ' + conv.mensaje + ' — no se descontó, revisar unidades.');
+        huboErrorConversion = true;
+        continue;
+      }
+      var necesarioEnUnidadMarca = conv.cantidad;
+
+      var stockActual = _leerStockActual_(sku);
+      if (stockActual <= 0) continue;
+      var consumirEnUnidadMarca = Math.min(stockActual, necesarioEnUnidadMarca);
+      var r = _moverStock_(sku, 'consumo', consumirEnUnidadMarca, {
+        detalle: 'Consumo por receta · ' + skuProducto + ' × ' + cantidadProducida
+      });
+      if (r.ok) {
+        movimientos.push(r);
+        // Lo efectivamente consumido, de vuelta a la unidad de la receta,
+        // para descontarlo del restante global sin perder precisión.
+        var vuelta = _convertirCantidad_(consumirEnUnidadMarca, marcas[i].unidad, linea.unidad);
+        restante -= vuelta.ok ? vuelta.cantidad : 0;
+      } else {
+        avisos.push(sku + ': ' + r.mensaje);
+      }
+    }
+
+    if (restante > 1e-9) {
+      var skuFaltante = ultimoSku || marcas[0].sku;
+      var convFaltante = _convertirCantidad_(restante, linea.unidad, (_catalogoPorSku_(skuFaltante) || {}).unidadProduccion || linea.unidad);
+      if (convFaltante.ok) {
+        var r2 = _moverStock_(skuFaltante, 'consumo', convFaltante.cantidad, {
+          detalle: 'Consumo por receta · ' + skuProducto + ' × ' + cantidadProducida
+            + ' · ⚠ sin stock suficiente en la familia "' + linea.familia + '"'
+        });
+        if (r2.ok) movimientos.push(r2);
+        avisos.push('Familia "' + linea.familia + '": faltaron ' + restante + (linea.unidad ? ' ' + linea.unidad : '')
+          + ' — quedó en negativo en ' + skuFaltante + '. Conviene revisar y reponer.');
+      } else if (!huboErrorConversion) {
+        // Solo este caso puntual (nunca se pudo ni siquiera dejarlo en
+        // negativo por una incompatibilidad de unidades) agrega un aviso
+        // nuevo — si ya se avisó arriba por marca, no se duplica.
+        avisos.push('Familia "' + linea.familia + '": faltaron ' + restante + (linea.unidad ? ' ' + linea.unidad : '')
+          + ', pero no se pudo registrar el faltante en ' + skuFaltante + ' (' + convFaltante.mensaje + '). Revisar unidades a mano.');
+      }
+    }
+  });
+
+  return { ok: true, movimientos: movimientos, avisos: avisos };
+}
+
+// ════════════════════════════════════════════════════════════════
 // ALERTAS DE STOCK — trazabilidad de despachos imputados sin stock
 // suficiente (el usuario confirmó "igual imputar la venta" con un
 // motivo). Sirve para revisar y corregir el stock más tarde sin tener
@@ -562,8 +884,8 @@ function ensureHojaAlertasStock_() {
 function registrarAlertaStock_(datos) {
   var ws = ensureHojaAlertasStock_();
   ws.appendRow([
-    new Date(), datos.desId, datos.sku, datos.producto, datos.variante || '',
-    datos.cantidad, datos.stockAlMomento, datos.motivo || '', _usuarioActual(), 'Pendiente de revisión'
+    new Date(), datos.desId, datos.sku, _sanTxt_(datos.producto), _sanTxt_(datos.variante || ''),
+    datos.cantidad, datos.stockAlMomento, _sanTxt_(datos.motivo || ''), _usuarioActual(), 'Pendiente de revisión'
   ]);
 }
 
@@ -641,7 +963,7 @@ function _anotarOrigenAnulado_(detalleOriginal, filaMov) {
       if (String(lotes[i][0]).trim() === mLote[0]) {
         var filaP = 2 + i;
         var obsActual = wsP.getRange(filaP, 9).getValue(); // col I = Observaciones
-        wsP.getRange(filaP, 9).setValue((obsActual ? obsActual + ' · ' : '') + nota);
+        wsP.getRange(filaP, 9).setValue(_sanTxt_((obsActual ? obsActual + ' · ' : '') + nota));
         return;
       }
     }
@@ -659,7 +981,7 @@ function _anotarOrigenAnulado_(detalleOriginal, filaMov) {
       if (String(ids[j][0]).trim() === mDes[0]) {
         var filaD = DATA_ROW + j;
         var obsD = wsD.getRange(filaD, 14).getValue(); // col N = Obs
-        wsD.getRange(filaD, 14).setValue((obsD ? obsD + ' · ' : '') + nota);
+        wsD.getRange(filaD, 14).setValue(_sanTxt_((obsD ? obsD + ' · ' : '') + nota));
         return;
       }
     }
@@ -676,20 +998,25 @@ function _anotarOrigenAnulado_(detalleOriginal, filaMov) {
 function registrarAjustesStock(ajustes, pin, motivo) {
   if (!_verificarPin_(pin)) return { ok: false, mensaje: '🔒 PIN incorrecto.' };
   if (!ajustes || !ajustes.length) return { ok: false, mensaje: 'No hay ajustes para guardar.' };
-  var aplicados = 0, errores = [];
-  ajustes.forEach(function(a) {
-    var cat = _catalogoPorSku_(a.sku);
-    if (!cat) { errores.push(a.sku + ': SKU no encontrado'); return; }
-    var r = _moverStock_(a.sku, 'ajuste', a.stockReal, {
-      detalle: 'Conteo semanal · stock real declarado: ' + a.stockReal + (motivo ? ' · ' + motivo : '')
+  // Mismo seguro que registrarProduccion: el conteo semanal también lee
+  // y después pisa el stock, así que también necesita el lock.
+  return _conLock_(function() {
+    var aplicados = 0, errores = [];
+    ajustes.forEach(function(a) {
+      var cat = _catalogoPorSku_(a.sku);
+      if (!cat) { errores.push(a.sku + ': SKU no encontrado'); return; }
+      if (!isFinite(Number(a.stockReal))) { errores.push(a.sku + ': el stock real tiene que ser un número'); return; }
+      var r = _moverStock_(a.sku, 'ajuste', a.stockReal, {
+        detalle: 'Conteo semanal · stock real declarado: ' + a.stockReal + (motivo ? ' · ' + motivo : '')
+      });
+      if (r.ok) aplicados++; else errores.push(a.sku + ': ' + r.mensaje);
     });
-    if (r.ok) aplicados++; else errores.push(a.sku + ': ' + r.mensaje);
+    return {
+      ok: errores.length === 0,
+      aplicados: aplicados,
+      mensaje: aplicados + ' ajuste(s) aplicado(s)' + (errores.length ? ' · Errores: ' + errores.join(' | ') : '')
+    };
   });
-  return {
-    ok: errores.length === 0,
-    aplicados: aplicados,
-    mensaje: aplicados + ' ajuste(s) aplicado(s)' + (errores.length ? ' · Errores: ' + errores.join(' | ') : '')
-  };
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -736,8 +1063,8 @@ function registrarMovimientoStock_(datos) {
   var ws = ensureHojaMovimientosStock_();
   var fila = Math.max(DATA_ROW, ws.getLastRow() + 1);
   ws.getRange(fila, 1, 1, ENCABEZADOS_MOVIMIENTOS_STOCK.length).setValues([[
-    new Date(), datos.sku, datos.producto, datos.tipo,
-    datos.cantidad, datos.merma || 0, datos.stockResultante, datos.detalle || '', _usuarioActual(), 'Vigente'
+    new Date(), datos.sku, _sanTxt_(datos.producto), datos.tipo,
+    datos.cantidad, datos.merma || 0, datos.stockResultante, _sanTxt_(datos.detalle || ''), _usuarioActual(), 'Vigente'
   ]]);
   return fila;
 }
@@ -746,6 +1073,15 @@ function registrarMovimientoStock_(datos) {
 // API PARA LA PANTALLA DE STOCK — un solo viaje al servidor al abrir
 // la página (mismo patrón que obtenerDatosFormularioProduccion).
 // ════════════════════════════════════════════════════════════════
+// Meta semanal expresada en la unidad del Stock (unidad de venta): la meta se carga en unidades de
+// producción (igual que el Plan semanal), el Stock vive en la unidad de venta → meta ÷ factor.
+// Con factor 1 (todos los productos salvo los que se configuren con equivalencia) devuelve la meta tal cual.
+function _metaEnUnidadStock_(sku, factorCrudo) {
+  var m = obtenerMetaSemanal_(sku);
+  var f = Number(factorCrudo) > 0 ? Number(factorCrudo) : 1;
+  return (m && f !== 1) ? Math.round(m / f * 100) / 100 : m;
+}
+
 function getDatosStockParaPantalla() {
   var wsCat = ensureHojaCatalogo_();
   var lastCat = wsCat.getLastRow();
@@ -797,7 +1133,7 @@ function getDatosStockParaPantalla() {
       // metaSemanal solo aplica a Terminados — es la referencia para la
       // alerta de "stock bajo" (< 20% de la meta). Insumos no tienen
       // meta semanal todavía, quedan sin semáforo hasta que la haya.
-      metaSemanal: tipo === 'Terminado' ? obtenerMetaSemanal_(sku) : null,
+      metaSemanal: tipo === 'Terminado' ? _metaEnUnidadStock_(sku, r[6]) : null,
       cvu: cvu, valorAcosto: valorAcosto
     });
   });
@@ -853,21 +1189,60 @@ function getDatosStockParaPantalla() {
 // ════════════════════════════════════════════════════════════════
 // REGISTRAR PRODUCCIÓN — genera el lote y sincroniza Stock (todo o nada)
 // ════════════════════════════════════════════════════════════════
+// ── AUDITORÍA H2 ── generarLote_ YA NO toma su propio candado.
+// Antes pedía LockService.getScriptLock() por su cuenta, pero su llamador
+// principal (registrarProduccion) ya corre adentro de _conLock_: dos
+// candados anidados pueden hacer que la producción espere 10 s y falle, o
+// que el interno libere al externo y el resto de la operación quede sin
+// protección. Ahora el único candado es el de quien lo llama —
+// registrarProduccion y registrarProduccionLibre corren los dos adentro de
+// _conLock_ — así el contador del lote tampoco puede repetirse. Si algún
+// día se llama a esta función desde otro lado, hacerlo SIEMPRE adentro de
+// _conLock_.
 function generarLote_(fecha, letraTurno) {
-  var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
-  try {
-    var props = PropertiesService.getScriptProperties();
-    var contador = Number(props.getProperty('CONTADOR_LOTE')) || 1000;
-    contador += 1;
-    props.setProperty('CONTADOR_LOTE', String(contador));
+  var props = PropertiesService.getScriptProperties();
+  var contador = Number(props.getProperty('CONTADOR_LOTE')) || 1000;
+  contador += 1;
+  props.setProperty('CONTADOR_LOTE', String(contador));
 
-    var tz = Session.getScriptTimeZone();
-    var fechaTexto = Utilities.formatDate(fecha, tz, 'yyyyMMdd');
-    return 'LOTE-' + fechaTexto + '-' + letraTurno + '-' + String(contador).padStart(4, '0');
-  } finally {
-    lock.releaseLock();
+  var tz = Session.getScriptTimeZone();
+  var fechaTexto = Utilities.formatDate(fecha, tz, 'yyyyMMdd');
+  return 'LOTE-' + fechaTexto + '-' + letraTurno + '-' + String(contador).padStart(4, '0');
+}
+
+// ════════════════════════════════════════════════════════════════
+// NEUTRALIZADOR DE FÓRMULAS (auditoría de seguridad)
+// Google Sheets convierte en FÓRMULA VIVA cualquier texto que empiece con
+// "=", "+", "-" o "@" cuando se lo guarda con setValue/setValues/appendRow.
+// Si alguien tipea en un campo libre (observaciones, nombre de proveedor,
+// cliente, motivo...) algo como =IMPORTXML(...) o =HYPERLINK(...), esa
+// celda ejecutaría la fórmula al abrir la planilla. Anteponer un
+// apóstrofe (') es el mismo recurso que se usa a mano: Sheets guarda el
+// texto tal cual se escribió, SIN mostrar el apóstrofe y sin evaluarlo.
+// Los números (incluso "-5" o "+5" como texto) no se tocan: no son riesgo.
+// Se aplica en la ENTRADA de cada función pública que recibe texto libre
+// del navegador (y en los pocos puntos donde se reescribe un texto que ya
+// estaba en una celda).
+// ════════════════════════════════════════════════════════════════
+function _sanTxt_(v) {
+  if (typeof v !== 'string' || !v) return v;
+  var c = v.charAt(0);
+  if ((c === '=' || c === '+' || c === '-' || c === '@' || c === '\t' || c === '\r') && isNaN(Number(v))) {
+    return "'" + v;
   }
+  return v;
+}
+// Igual que _sanTxt_ pero recorre objetos y listas completos (copia — no
+// modifica el original). Fechas, números, booleanos y null pasan sin cambios.
+function _sanObj_(x) {
+  if (typeof x === 'string') return _sanTxt_(x);
+  if (Array.isArray(x)) return x.map(_sanObj_);
+  if (x && typeof x === 'object' && !(x instanceof Date)) {
+    var o = {};
+    Object.keys(x).forEach(function(k) { o[k] = _sanObj_(x[k]); });
+    return o;
+  }
+  return x;
 }
 
 // La hoja Produccion_Produccion existía de antes en el sandbox donde se armó
@@ -902,42 +1277,76 @@ function ensureHojaProduccion_() {
 
 function registrarProduccion(datos) {
   try {
+    datos = _sanObj_(datos || {}); // neutraliza "=..." en observaciones, etc. (ver _sanTxt_)
     var cantidad = Number(datos.cantidad) || 0;
-    if (cantidad <= 0) return { ok: false, mensaje: 'La cantidad tiene que ser mayor a 0' };
+    // isFinite: "Infinity" pasaba el "<= 0" y dejaba el stock en infinito.
+    if (cantidad <= 0 || !isFinite(cantidad)) return { ok: false, mensaje: 'La cantidad tiene que ser un número mayor a 0' };
+    var mermaIn = Number(datos.merma) || 0;
+    if (mermaIn < 0 || !isFinite(mermaIn)) return { ok: false, mensaje: 'La merma tiene que ser un número mayor o igual a 0' };
     if (!datos.fecha) return { ok: false, mensaje: 'Elegí una fecha' };
+    if (isNaN(new Date(datos.fecha + 'T00:00:00').getTime())) return { ok: false, mensaje: 'La fecha no es válida' };
 
     // ── resolver SKU ANTES de generar lote o tocar cualquier hoja ──
     var res = _claveStock_(datos.producto, datos.variante);
     if (!res.ok) return { ok: false, mensaje: res.mensaje };
 
-    var fecha = new Date(datos.fecha + 'T00:00:00');
-    var turno = ['Mañana', 'Tarde', 'Noche'].indexOf(datos.turno) > -1 ? datos.turno : 'Mañana';
-    var letraTurno = { 'Mañana': 'M', 'Tarde': 'T', 'Noche': 'N' }[turno];
-    var lote = generarLote_(fecha, letraTurno);
-    var merma = Number(datos.merma) || 0;
+    // ── todo lo que LEE el stock actual y después lo ESCRIBE queda
+    //    adentro de _conLock_ (igual que ya hacen crearPedido,
+    //    cobrarClienteSaldo, registrarCompraItemizada, crearInsumoNuevo
+    //    y guardarReceta): sin esto, si dos personas registran
+    //    producción casi al mismo instante — un operario en planta y el
+    //    Gerente desde su panel, o dos operarios — las dos podían leer
+    //    el mismo stock viejo antes de que la primera terminara de
+    //    escribir, y la segunda escritura pisaba a la primera perdiendo
+    //    unidades en silencio. Este archivo era el único de los cinco
+    //    que tocan Stock/Catálogo sin este seguro.
+    return _conLock_(function() {
+      var fecha = new Date(datos.fecha + 'T00:00:00');
+      var turno = ['Mañana', 'Tarde', 'Noche'].indexOf(datos.turno) > -1 ? datos.turno : 'Mañana';
+      var letraTurno = { 'Mañana': 'M', 'Tarde': 'T', 'Noche': 'N' }[turno];
+      var lote = generarLote_(fecha, letraTurno);
+      var merma = Number(datos.merma) || 0;
 
-    // ── sumar a Stock; si falla (p. ej. SKU inválido), no se guarda la producción ──
-    var movimiento = sumarStockPorProduccion_(datos.producto, datos.variante, cantidad, {
-      merma: merma,
-      lote: lote
+      // ── sumar a Stock; si falla (p. ej. SKU inválido), no se guarda la producción ──
+      var movimiento = sumarStockPorProduccion_(datos.producto, datos.variante, cantidad, {
+        merma: merma,
+        lote: lote
+      });
+      if (!movimiento.ok) return { ok: false, mensaje: movimiento.mensaje };
+
+      var hojaProducciones = ensureHojaProduccion_();
+      hojaProducciones.appendRow([
+        new Date(), fecha, turno, res.sku, _sanTxt_(res.catalogo.nombre), cantidad, lote, '', datos.observaciones || '', _sanTxt_(res.catalogo.unidadProduccion), merma
+      ]);
+
+      // ── consumir insumos según la receta de este producto (si tiene) ──
+      // Nunca puede hacer fallar registrarProduccion: la producción y su
+      // suma de Stock de arriba ya quedaron guardadas antes de llegar acá,
+      // así que un problema del lado de los insumos solo se reporta como
+      // aviso, no revierte nada.
+      var avisosInsumos = [];
+      try {
+        // La receta es por 1 unidad de VENTA (= factor unidades de producción). Con factor 1 (todos hoy
+        // salvo los que se configuren, p. ej. Medialunas: 4 por bandeja) la cuenta es la de siempre.
+        var factorProd = Number(res.catalogo.factor) > 0 ? Number(res.catalogo.factor) : 1;
+        var consumo = consumirInsumosPorReceta_(res.sku, cantidad / factorProd);
+        if (consumo && consumo.avisos && consumo.avisos.length) avisosInsumos = consumo.avisos;
+      } catch (eConsumo) {
+        avisosInsumos = ['No se pudo descontar insumos por receta: ' + eConsumo.message];
+      }
+
+      var tz = Session.getScriptTimeZone();
+      return {
+        ok: true,
+        lote: lote,
+        sku: res.sku,
+        producto: res.catalogo.nombre,
+        cantidad: cantidad,
+        stockActual: movimiento.stockActual,
+        fecha: Utilities.formatDate(fecha, tz, 'dd/MM/yyyy'),
+        avisosInsumos: avisosInsumos
+      };
     });
-    if (!movimiento.ok) return { ok: false, mensaje: movimiento.mensaje };
-
-    var hojaProducciones = ensureHojaProduccion_();
-    hojaProducciones.appendRow([
-      new Date(), fecha, turno, res.sku, res.catalogo.nombre, cantidad, lote, '', datos.observaciones || '', res.catalogo.unidadProduccion, merma
-    ]);
-
-    var tz = Session.getScriptTimeZone();
-    return {
-      ok: true,
-      lote: lote,
-      sku: res.sku,
-      producto: res.catalogo.nombre,
-      cantidad: cantidad,
-      stockActual: movimiento.stockActual,
-      fecha: Utilities.formatDate(fecha, tz, 'dd/MM/yyyy')
-    };
   } catch (e) {
     return { ok: false, mensaje: '❌ ' + e.message };
   }
@@ -950,33 +1359,43 @@ function registrarProduccion(datos) {
 // ════════════════════════════════════════════════════════════════
 function registrarProduccionLibre(datos) {
   try {
+    datos = _sanObj_(datos || {}); // neutraliza "=..." (ver _sanTxt_)
     var cantidad = Number(datos.cantidad) || 0;
-    if (cantidad <= 0) return { ok: false, mensaje: 'La cantidad tiene que ser mayor a 0' };
+    if (cantidad <= 0 || !isFinite(cantidad)) return { ok: false, mensaje: 'La cantidad tiene que ser un número mayor a 0' };
+    var mermaIn = Number(datos.merma) || 0;
+    if (mermaIn < 0 || !isFinite(mermaIn)) return { ok: false, mensaje: 'La merma tiene que ser un número mayor o igual a 0' };
     if (!datos.producto || !String(datos.producto).trim()) return { ok: false, mensaje: 'Escribí qué se produjo' };
     if (!datos.unidad) return { ok: false, mensaje: 'Elegí una unidad' };
     if (!datos.fecha) return { ok: false, mensaje: 'Elegí una fecha' };
+    if (isNaN(new Date(datos.fecha + 'T00:00:00').getTime())) return { ok: false, mensaje: 'La fecha no es válida' };
 
-    var fecha = new Date(datos.fecha + 'T00:00:00');
-    var turno = ['Mañana', 'Tarde', 'Noche'].indexOf(datos.turno) > -1 ? datos.turno : 'Mañana';
-    var letraTurno = { 'Mañana': 'M', 'Tarde': 'T', 'Noche': 'N' }[turno];
-    var lote = generarLote_(fecha, letraTurno);
-    var merma = Number(datos.merma) || 0;
+    // ── AUDITORÍA H2 ── antes esta función llamaba a generarLote_ SIN
+    // candado: dos cargas simultáneas podían leer el mismo contador y
+    // repetir el número de lote. Ahora corre adentro de _conLock_, igual
+    // que registrarProduccion (y generarLote_ ya no toma candado propio).
+    return _conLock_(function() {
+      var fecha = new Date(datos.fecha + 'T00:00:00');
+      var turno = ['Mañana', 'Tarde', 'Noche'].indexOf(datos.turno) > -1 ? datos.turno : 'Mañana';
+      var letraTurno = { 'Mañana': 'M', 'Tarde': 'T', 'Noche': 'N' }[turno];
+      var lote = generarLote_(fecha, letraTurno);
+      var merma = Number(datos.merma) || 0;
 
-    var hojaProducciones = ensureHojaProduccion_();
-    hojaProducciones.appendRow([
-      new Date(), fecha, turno, '—', String(datos.producto).trim(), cantidad, lote, '', datos.observaciones || '', datos.unidad, merma
-    ]);
+      var hojaProducciones = ensureHojaProduccion_();
+      hojaProducciones.appendRow([
+        new Date(), fecha, turno, '—', String(datos.producto).trim(), cantidad, lote, '', datos.observaciones || '', datos.unidad, merma
+      ]);
 
-    var tz = Session.getScriptTimeZone();
-    return {
-      ok: true,
-      lote: lote,
-      producto: String(datos.producto).trim(),
-      cantidad: cantidad,
-      unidad: datos.unidad,
-      merma: merma,
-      fecha: Utilities.formatDate(fecha, tz, 'dd/MM/yyyy')
-    };
+      var tz = Session.getScriptTimeZone();
+      return {
+        ok: true,
+        lote: lote,
+        producto: String(datos.producto).trim(),
+        cantidad: cantidad,
+        unidad: datos.unidad,
+        merma: merma,
+        fecha: Utilities.formatDate(fecha, tz, 'dd/MM/yyyy')
+      };
+    });
   } catch (e) {
     return { ok: false, mensaje: '❌ ' + e.message };
   }
@@ -1001,6 +1420,11 @@ function obtenerDatosFormularioProduccion() {
     });
   }
 
+  // Qué es "1 unidad" de cada producto (el texto «Unidad» de su fila de precios: «Bolsa 500g»,
+  // «Unidad»…). Es un extra para que el formulario lo muestre: si falla, el formulario sale igual.
+  var metaUnidad = {};
+  try { if (typeof _metaStockPorSku_ === 'function') metaUnidad = _metaStockPorSku_(); } catch (e) { metaUnidad = {}; }
+
   var terminados = [];
   var insumos = [];
   catalogo.forEach(function(r) {
@@ -1010,7 +1434,10 @@ function obtenerDatosFormularioProduccion() {
     var nombre = r[1], categoria = r[2], tipo = r[3];
     var stock = stockPorSku[sku] || 0;
     if (tipo === 'Terminado') {
-      terminados.push({ sku: sku, nombre: nombre, categoria: categoria, stock: stock, metaSemanal: obtenerMetaSemanal_(sku), unidadProduccion: r[4] });
+      terminados.push({ sku: sku, nombre: nombre, categoria: categoria, stock: stock, metaSemanal: _metaEnUnidadStock_(sku, r[6]), unidadProduccion: r[4],
+        unidadVenta: (metaUnidad[sku] && metaUnidad[sku].unidadVenta) || '',
+        unidadDespacho: String(r[5] || '').trim(),
+        factor: (Number(r[6]) > 0 ? Number(r[6]) : 1) });
     } else if (tipo === 'Insumo') {
       insumos.push({ sku: sku, nombre: nombre, categoria: categoria, stock: stock });
     }

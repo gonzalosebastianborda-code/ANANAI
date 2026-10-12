@@ -255,6 +255,7 @@
     padding:32px 26px;
     max-width:340px;
     width:100%;
+    max-height:calc(100vh - 48px); overflow-y:auto; /* con avisos de insumos el sello puede ser alto */
     text-align:center;
     transform:rotate(-2deg);
     animation:stampIn 0.25s ease-out;
@@ -312,7 +313,7 @@
         <div class="prod-row">
           <div>
             <div class="metric" id="term-stock-valor">0</div>
-            <div class="metric-label">stock actual</div>
+            <div class="metric-label" id="term-stock-label">stock actual</div>
           </div>
           <span class="chip" id="term-meta-chip">meta: 0</span>
         </div>
@@ -351,6 +352,7 @@
       <div class="field">
         <label id="cantidad-label" for="reg-cantidad">Cantidad producida</label>
         <input type="number" id="reg-cantidad" inputmode="decimal" placeholder="0">
+        <p class="field-hint" id="cant-equiv" style="display:none;margin:6px 0 0;font-weight:600"></p>
       </div>
       <div class="field">
         <label for="reg-merma">Merma (opcional)</label>
@@ -399,6 +401,12 @@
     cargado: false
   };
 
+  // Seguridad: todo texto que viene del servidor (nombre de producto, lote, avisos...) y entra
+  // a un innerHTML pasa por esc(), para que un nombre con <etiquetas> se vea como texto.
+  function esc(s){
+    return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  }
+
   function fmt(d){
     return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear();
   }
@@ -438,7 +446,7 @@
 
     state.unidadesOtro = datos.unidadesOtro || [];
     var selUnidad = document.getElementById('otro-unidad');
-    selUnidad.innerHTML = state.unidadesOtro.map(function(u){ return '<option value="'+u+'">'+u+'</option>'; }).join('');
+    selUnidad.innerHTML = state.unidadesOtro.map(function(u){ return '<option value="'+esc(u)+'">'+esc(u)+'</option>'; }).join('');
 
     var btn = document.getElementById('btn-registrar');
     btn.disabled = false;
@@ -476,9 +484,35 @@
     label.textContent = state.categoria === 'otro' ? 'Cantidad producida' : 'Cantidad producida';
 
     document.getElementById('reg-error').style.display = 'none';
+    cantEquiv();
   });
 
   // ---------- mostrar stock real al elegir producto/insumo ----------
+  function nAR(n){ return (Math.round(Number(n)*100)/100).toLocaleString('es-AR',{maximumFractionDigits:2}); }
+  // Nombre de la unidad en que vive el Stock de un producto con equivalencia (bandeja, pack…)
+  function uvTxt(p){
+    var u = String(p.unidadVenta||'').trim();
+    if (u && u.toLowerCase() !== 'unidad') return u;
+    var d = String(p.unidadDespacho||'').trim();
+    return d || 'unidades de venta';
+  }
+  function etiquetaCantidad(p){
+    if (!p || !p.unidadProduccion) return 'Cantidad producida';
+    if (p.factor > 1) return 'Cantidad producida (' + p.unidadProduccion + ' · ' + nAR(p.factor) + ' = 1 ' + uvTxt(p) + ')';
+    return 'Cantidad producida (' + p.unidadProduccion + ((p.unidadVenta && String(p.unidadVenta).trim().toLowerCase() !== 'unidad') ? ' · 1 = ' + p.unidadVenta : '') + ')';
+  }
+  // Con equivalencia (ej. Medialunas: 4 = 1 bandeja) muestra cuánto suma al stock lo que se está tipeando
+  function cantEquiv(){
+    var h = document.getElementById('cant-equiv');
+    var p = state.categoria === 'terminado' ? state.terminadosPorSku[document.getElementById('term-producto').value] : null;
+    var n = Number(document.getElementById('reg-cantidad').value);
+    if (p && p.factor > 1 && n > 0 && isFinite(n)) {
+      h.textContent = '= ' + nAR(n / p.factor) + ' ' + uvTxt(p) + ' que se suman al stock';
+      h.style.display = '';
+    } else { h.textContent = ''; h.style.display = 'none'; }
+  }
+  document.getElementById('reg-cantidad').addEventListener('input', cantEquiv);
+
   function estadoStock(stock, meta){
     var pct = meta > 0 ? Math.min(100, Math.round((stock / meta) * 100)) : 0;
     var estado = pct >= 100 ? 'cumplido' : pct >= 50 ? 'atento' : 'urgente';
@@ -489,10 +523,12 @@
     var card = document.getElementById('term-stock-card');
     var p = state.terminadosPorSku[e.target.value];
     var label = document.getElementById('cantidad-label');
-    label.textContent = p && p.unidadProduccion ? 'Cantidad producida (' + p.unidadProduccion + ')' : 'Cantidad producida';
+    label.textContent = etiquetaCantidad(p);
+    cantEquiv();
     if (!p) { card.style.display = 'none'; return; }
     card.style.display = 'block';
     document.getElementById('term-stock-valor').textContent = p.stock;
+    document.getElementById('term-stock-label').textContent = (p.factor > 1) ? 'stock actual · en ' + uvTxt(p) : 'stock actual';
     document.getElementById('term-meta-chip').textContent = 'meta: ' + p.metaSemanal;
 
     var r = estadoStock(p.stock, p.metaSemanal);
@@ -593,7 +629,18 @@
         if (mapa[res.sku]) mapa[res.sku].stock = res.stockActual;
       }
 
-      var detalle = res.lote + '<br>' + res.producto + ' · ' + res.cantidad + (res.unidad ? ' ' + res.unidad : '') + '<br>' + res.fecha;
+      var detalle = esc(res.lote) + '<br>' + esc(res.producto) + ' · ' + esc(res.cantidad) + (res.unidad ? ' ' + esc(res.unidad) : '') + '<br>' + esc(res.fecha);
+      var pEq = (!esLibre && state.categoria === 'terminado') ? state.terminadosPorSku[res.sku] : null;
+      if (pEq && pEq.factor > 1) detalle += '<br>= ' + esc(nAR(res.cantidad / pEq.factor)) + ' ' + esc(uvTxt(pEq)) + ' al stock';
+      // ── AUDITORÍA H3 ── el servidor ya calcula avisos al descontar insumos por receta
+      // (stock insuficiente, unidades que no se pueden convertir...) pero este sello nunca
+      // los mostraba: la producción quedaba "bien" y el faltante pasaba desapercibido.
+      if (res.avisosInsumos && res.avisosInsumos.length) {
+        detalle += '<div style="margin-top:12px;padding:10px 12px;border-radius:8px;background:var(--urgent-soft);color:var(--urgent);font-size:12px;line-height:1.45;text-align:left">'
+          + '<b>⚠ Revisá los insumos</b> (la producción SÍ quedó registrada):<br>'
+          + res.avisosInsumos.map(function(a){ return '• ' + esc(a); }).join('<br>')
+          + '</div>';
+      }
       document.getElementById('stamp-detail').innerHTML = detalle;
       document.getElementById('stamp-overlay').classList.add('show');
 

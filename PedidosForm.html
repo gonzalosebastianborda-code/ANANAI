@@ -7,73 +7,207 @@
 <title>AÑAÑAI · Pedidos</title>
 <?!= sharedCSS() ?>
 <style>
-/* Reusa las clases .hdr/.body/.field/.btns/.b1/.b2/.msg/.sp de sharedCSS()
-   (definida en Código.gs) para que esta página se vea igual que los
-   sidebars de Despacho/Cobro/Gasto. Lo de acá abajo es solo lo propio
-   de Pedidos: layout mobile, tabs, tarjetas de pedido y badges de estado. */
-body{max-width:560px;margin:0 auto;background:#f5f7fa}
-.topbar{background:#2F5496;color:#fff;padding:13px 17px;display:flex;justify-content:space-between;align-items:center}
-.topbar .who{font-size:11px;opacity:.85;margin-top:1px}
-.topbar button{background:rgba(255,255,255,.16);color:#fff;border:none;border-radius:6px;padding:7px 12px;font-size:11px;font-weight:700}
-.tabs{display:flex;background:#fff;border-bottom:1px solid #e0e6f0;overflow-x:auto;position:sticky;top:0;z-index:10}
-.tab{flex:1;padding:11px 6px;text-align:center;font-size:11px;font-weight:700;color:#8891a8;border-bottom:3px solid transparent;white-space:nowrap;cursor:pointer}
-.tab.on{color:#2F5496;border-bottom-color:#2F5496}
+/* ══════════════════════════════════════════════════════════════════
+   AÑAÑAI · Pedidos — diseño "ticket de papel + terminal de mostrador",
+   igual paleta/tipografías que el mockup aprobado (ananai-mockup-gerente).
+   Reusa las clases .hdr/.body/.field/.btns/.b1/.b2/.msg/.sp/.req/.hint
+   de sharedCSS() (Código.gs) pero las reviste acá abajo con el lenguaje
+   visual del mockup — ningún id ni selector que usa el JS cambia de
+   nombre, solo cambia cómo se ven. Las clases .keypad/.ticket/.tk-h/
+   .sectionLabel/.add-key son nuevas y puramente de layout/visual.
+   ══════════════════════════════════════════════════════════════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Oswald:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600;700&display=swap');
+
+:root{
+  --paper:#F1EFE6; --paper-raised:#FBFAF5; --ink:#1E2321; --steel:#6B7169; --line:#DAD5C6;
+  --go:#2F6B4F; --go-soft:#E1EDE5; --warn:#B8791F; --warn-soft:#F5E8D2; --urgent:#B23A2E; --urgent-soft:#F5DEDA;
+  --purple:#8a63c9; --purple-soft:#ece3fa;
+  --ledger-case:#3B2A1E; --ledger-case-hi:#4E3A28; --ledger-txt:#F3ECDC; --ledger-txt-dim:#C9BC9E; --ledger-txt-hi:#FFFBF3;
+}
+*{box-sizing:border-box}
+body{max-width:560px;margin:0 auto;background:var(--paper);color:var(--ink);font-family:'IBM Plex Sans',Arial,sans-serif}
+
+/* ---- overrides de los bloques genéricos de sharedCSS(), revestidos con
+   la paleta papel/libreta — ningún selector nuevo, solo redefinidos con
+   más especificidad ("body .x") para ganarle a sharedCSS() sin tocarlo ---- */
+body .hdr{background:linear-gradient(160deg,var(--ledger-case-hi),var(--ledger-case))}
+body .hdr h2{font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.02em;color:var(--ledger-txt-hi);margin:0 0 4px}
+body .hdr p{color:var(--ledger-txt-dim);font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.04em;text-transform:uppercase;margin:0}
+body .body{background:var(--paper)}
+body .field label{font-family:'IBM Plex Mono',monospace;font-size:9.5px;font-weight:600;color:var(--steel);text-transform:uppercase;letter-spacing:.04em}
+body .field input,body .field select,body .field textarea{background:#fff;border:1.5px solid var(--line);border-radius:8px;color:var(--ink);font-family:'IBM Plex Sans',Arial,sans-serif}
+body .field input:focus,body .field select:focus,body .field textarea:focus{border-color:var(--go);box-shadow:0 0 0 1.5px var(--go);outline:none}
+body .req{color:var(--urgent)}
+body .btns button.b1,body button.b1{background:var(--go);color:#fff;font-family:'Oswald',sans-serif;font-weight:600;letter-spacing:.03em;text-transform:uppercase;border:none;border-radius:8px;box-shadow:0 3px 0 #1f4f39}
+body .btns button.b1:active,body button.b1:active{transform:translateY(2px);box-shadow:none}
+body .btns button.b2,body button.b2{background:var(--paper-raised);color:var(--ink);border:1.5px solid var(--line);font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:11px;text-transform:uppercase;letter-spacing:.03em;border-radius:8px}
+body .msg.ok{background:var(--go-soft);color:var(--go)}
+body .msg.er{background:var(--urgent-soft);color:var(--urgent)}
+body .hint{border-radius:8px;font-family:'IBM Plex Sans',Arial,sans-serif}
+body .hint-info{background:var(--go-soft);color:#1c4a34}
+body .hint-warn{background:var(--warn-soft);color:#7a4f0f}
+
+/* ---- barra superior y pestañas — lomo de libreta ---- */
+.topbar{background:linear-gradient(160deg,var(--ledger-case-hi),var(--ledger-case));color:var(--ledger-txt-hi);padding:13px 17px;display:flex;justify-content:space-between;align-items:center}
+.topbar #rolLabel{display:inline-block;font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10px;letter-spacing:.05em;text-transform:uppercase;background:rgba(255,255,255,.14);padding:4px 11px;border-radius:20px}
+.topbar .who{font-size:10.5px;opacity:.8;margin-top:4px;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em}
+.topbar button{background:none;border:none;color:var(--ledger-txt-hi);font-size:10.5px;font-weight:600;font-family:'IBM Plex Mono',monospace;letter-spacing:.03em;text-transform:uppercase;text-decoration:underline;text-underline-offset:3px;padding:6px 2px;opacity:.85;cursor:pointer}
+.tabs{display:flex;background:linear-gradient(180deg,var(--ledger-case-hi),var(--ledger-case));overflow-x:auto;position:sticky;top:0;z-index:10;padding:6px 4px 0}
+.tab{flex:1;padding:10px 4px 9px;text-align:center;font-size:9.5px;font-weight:600;color:var(--ledger-txt-dim);white-space:nowrap;cursor:pointer;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.02em;border-radius:6px 6px 0 0;border-bottom:3px solid transparent}
+.tab .tabIdx{display:block;font-size:8px;opacity:.65;letter-spacing:.08em;margin-bottom:2px}
+.tab.on{color:var(--ink);background:var(--paper-raised);border-bottom-color:var(--go)}
+.tab.on .tabIdx{color:var(--go);opacity:1}
 .view{padding:15px 17px;display:none}
 .view.on{display:block}
-.card{background:#fff;border:1px solid #e0e6f0;border-radius:10px;padding:13px 15px;margin-bottom:10px}
-.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:10.5px;font-weight:700;white-space:nowrap}
-.b-pendiente{background:#fff4e6;color:#a05010}
-.b-aceptado{background:#eef3fb;color:#2F5496}
-.b-terminado{background:#eef8f2;color:#1a7a40}
-.b-entregado{background:#e8f8ef;color:#1a7a40}
-.b-rechazado,.b-cancelado{background:#fde8e8;color:#b82020}
-.b-revertido{background:#f0e6fa;color:#6b21a8}
-.linea{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed #eee;gap:8px}
-.editLineaBtn{background:none;border:none;color:#2F5496;font-size:13px;cursor:pointer;padding:2px 4px;line-height:1}
+
+/* ---- Inicio (dashboard, solo Gerente/Dueño/CFO) ---- */
+.iniWelcome{padding:6px 2px 18px}
+.iniWelcome-h{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--steel);text-transform:uppercase;letter-spacing:.05em}
+.iniWelcome-name{font-family:'Oswald',sans-serif;font-weight:600;font-size:26px;color:var(--ink);margin-top:2px}
+.quickRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:4px}
+.quick-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:18px 8px;border-radius:10px;border:1px solid var(--line);background:var(--paper-raised);cursor:pointer}
+.quick-btn .qb-ico{font-size:22px;line-height:1}
+.quick-btn .qb-txt{font-family:'IBM Plex Mono',monospace;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.02em;color:var(--ink)}
+.quick-btn.alt{background:var(--ledger-case);border-color:var(--ledger-case-hi)}
+.quick-btn.alt .qb-txt{color:var(--ledger-txt-hi)}
+
+/* ---- tarjetas / badges / listas — "ticket" de papel ---- */
+.card{background:var(--paper-raised);border:1px solid var(--line);border-radius:10px;padding:13px 15px;margin-bottom:10px;box-shadow:0 6px 16px -12px rgba(30,25,15,.4)}
+.badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:9.5px;font-weight:700;white-space:nowrap;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.03em}
+.b-pendiente{background:var(--warn-soft);color:var(--warn)}
+.b-aceptado{background:var(--go-soft);color:var(--go)}
+.b-terminado{background:var(--go-soft);color:var(--go)}
+.b-entregado{background:var(--go-soft);color:var(--go)}
+.b-rechazado,.b-cancelado{background:var(--urgent-soft);color:var(--urgent)}
+.b-revertido{background:var(--purple-soft);color:var(--purple)}
+.linea{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-bottom:1px dotted var(--line);gap:8px;font-family:'IBM Plex Sans',Arial,sans-serif}
+.editLineaBtn{background:none;border:none;color:var(--ink);font-size:13px;cursor:pointer;padding:2px 4px;line-height:1}
+.linea span:last-child{font-family:'IBM Plex Mono',monospace;font-weight:600;white-space:nowrap;font-variant-numeric:tabular-nums}
 .accBtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-.accBtns button{flex:1;min-width:86px;padding:9px 6px;border:none;border-radius:6px;font-size:11.5px;font-weight:700;color:#fff}
+.accBtns button{flex:1;min-width:86px;padding:9px 6px;border:none;border-radius:6px;font-size:10px;font-weight:700;color:#fff;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.02em}
 .roleBtns{display:grid;gap:10px;margin-top:6px}
-.roleBtn{padding:16px;border-radius:10px;border:1.5px solid #d0d7e8;background:#fff;font-size:14px;font-weight:700;color:#1a1a2e}
-.roleBtn:active{background:#f0f4ff}
-.cartLine{display:flex;gap:8px;align-items:center;background:#f5f7fa;border-radius:8px;padding:9px;margin-bottom:6px}
-.cartLine .fl{flex:1;font-size:12px}
-.cartLine button{background:#fde8e8;color:#b82020;border:none;border-radius:5px;width:28px;height:28px;font-weight:700;flex:none}
-.kFila{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px solid #eee;font-size:12.5px}
-.empty2{text-align:center;padding:26px;color:#8891a8;font-size:12.5px}
+.roleBtn{padding:15px;border-radius:8px;border:1.5px solid var(--line);background:var(--paper-raised);font-size:13.5px;font-weight:600;color:var(--ink);font-family:'Oswald',sans-serif;letter-spacing:.02em}
+.roleBtn:active{background:var(--go-soft);border-color:var(--go)}
+.cartLine{display:flex;gap:8px;align-items:center;background:var(--paper);border:1px dotted var(--line);border-radius:8px;padding:9px;margin-bottom:6px}
+.cartLine .fl{flex:1;font-size:12px;font-family:'IBM Plex Sans',Arial,sans-serif}
+.cartLine .fl b{font-family:'Oswald',sans-serif;font-weight:600}
+.cartLine button{background:var(--urgent-soft);color:var(--urgent);border:none;border-radius:5px;width:28px;height:28px;font-weight:700;flex:none}
+.kFila{display:flex;justify-content:space-between;padding:9px 0;border-bottom:1px dotted var(--line);font-size:12px}
+.kFila span:last-child{font-family:'IBM Plex Mono',monospace;font-variant-numeric:tabular-nums}
+.empty2{text-align:center;padding:26px;color:var(--steel);font-size:12px;font-style:italic}
 .pinDots{text-align:center}
-/* ── precios en chip (Nuevo pedido) — mismo lenguaje visual que Despacho ── */
-.panel-precios{display:none;margin:10px 0;padding:12px;border-radius:10px;background:#eef3fa;border:1px solid #cdd9ec}
+.sectionLabel{margin-top:16px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--steel)}
+
+/* ---- precios/condiciones en chip — variante clara (por defecto) y
+   variante oscura cuando el chip vive dentro de un .keypad ---- */
+.panel-precios{display:none;margin:10px 0;padding:12px;border-radius:10px;background:var(--paper);border:1px dashed var(--line)}
 .panel-precios.show{display:block}
-.pp-title{font-size:11.5px;color:#1F3864;font-weight:600;margin-bottom:8px}
+.pp-title{font-size:10.5px;color:var(--steel);font-weight:600;margin-bottom:8px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.03em}
 .pp-row{display:flex;gap:8px;flex-wrap:wrap}
-.pp-chip{flex:1;min-width:100px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 10px;border-radius:8px;border:1px solid #2F5496;background:#fff;cursor:pointer;text-align:left}
-.pp-chip:active{background:#f0f4ff}
-.pp-chip.pp-ana{border-color:#1e7a46}
-.pp-lbl{font-size:10.5px;color:#666}
-.pp-val{font-size:17px;font-weight:800;color:#1F3864}
-.pp-ana .pp-val{color:#1e7a46}
-.pp-chip.pp-libre{border-color:#b7841a}
-.pp-libre .pp-val{color:#b7841a}
-.pp-hint{margin-top:8px;font-size:11.5px;color:#1e7a46;font-weight:600}
-.pp-nota{font-size:12.5px;color:#a15b00;font-weight:600}
-.pp-chip.on{background:#2F5496;color:#fff}
+.pp-chip{flex:1;min-width:100px;display:flex;flex-direction:column;align-items:flex-start;gap:2px;padding:9px 10px;border-radius:8px;border:1.5px solid var(--line);background:var(--paper-raised);cursor:pointer;text-align:left;font-family:'IBM Plex Sans',Arial,sans-serif}
+.pp-chip:active{background:var(--go-soft)}
+.pp-chip.pp-ana{border-color:var(--go)}
+.pp-lbl{font-size:9.5px;color:var(--steel);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.02em}
+.pp-val{font-size:16px;font-weight:700;color:var(--ink);font-family:'IBM Plex Mono',monospace}
+.pp-ana .pp-val{color:var(--go)}
+.pp-chip.pp-libre{border-color:var(--warn)}
+.pp-libre .pp-val{color:var(--warn)}
+.pp-hint{margin-top:8px;font-size:11px;color:var(--go);font-weight:600}
+.pp-nota{font-size:12px;color:var(--warn);font-weight:600}
+.pp-chip.on{background:var(--go);border-color:var(--go)}
 .pp-chip.on .pp-lbl,.pp-chip.on .pp-val{color:#fff}
-/* ── CXC: fila clickeable + detalle expandible ── */
+
+/* ---- .keypad — panel oscuro de carga de datos, mismo lenguaje que la
+   "terminal posnet" del mockup — envuelve Nuevo Pedido/Gastos/Compras ---- */
+.keypad{background:linear-gradient(180deg,#262b38,#1b1e27);border-radius:14px;padding:16px 15px;margin-bottom:14px;box-shadow:0 14px 30px -16px rgba(0,0,0,.55)}
+.keypad .kp-h{font-family:'Oswald',sans-serif;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8891a0;margin:0 0 10px}
+.keypad .kp-h:not(:first-child){margin-top:16px}
+.keypad .field label{color:#8891a0}
+.keypad .field input,.keypad .field select{background:#0a0c11;border:1px solid rgba(0,0,0,.5);color:#e2e6ee;box-shadow:inset 0 2px 5px rgba(0,0,0,.5)}
+.keypad .field input::placeholder{color:#565c6c}
+.keypad .field input:focus,.keypad .field select:focus{border-color:transparent;box-shadow:inset 0 2px 5px rgba(0,0,0,.5),0 0 0 1.5px #5cff9e}
+.keypad .pp-chip{background:#242938;border-color:rgba(255,255,255,.08)}
+.keypad .pp-lbl{color:#8891a0}
+.keypad .pp-val{color:#cdd3e0}
+.keypad .pp-chip:active{background:#2b3141}
+.keypad .pp-chip.on{background:rgba(92,255,158,.14);border-color:#5cff9e}
+.keypad .pp-chip.on .pp-lbl,.keypad .pp-chip.on .pp-val{color:#5cff9e}
+.keypad .pp-chip.pp-ana{border-color:#5cff9e}
+.keypad .pp-ana .pp-val{color:#5cff9e}
+.keypad .pp-nota{color:#f3ddb0}
+.keypad .empty2{color:#6b7285}
+.keypad button.b2{background:#242938;color:#cdd3e0;border:1px solid rgba(255,255,255,.08)}
+.keypad .field:last-of-type{margin-bottom:0}
+.add-key{display:block;width:100%;margin-top:6px;padding:12px 0;border-radius:8px;border:none;background:#5cff9e;color:#052113;font-family:'Oswald',sans-serif;font-weight:600;font-size:12.5px;letter-spacing:.05em;text-transform:uppercase;cursor:pointer;box-shadow:0 3px 0 #2f9a5f}
+.add-key:active{transform:translateY(3px);box-shadow:none}
+
+/* ---- .ticket — recibo de papel para el carrito en curso (Nuevo Pedido/
+   Compras) — el mismo lenguaje visual que el "ticket" del mockup ---- */
+.ticket{background:var(--paper-raised);border-radius:6px;padding:16px 15px 14px;position:relative;box-shadow:0 14px 30px -18px rgba(0,0,0,.5);margin-bottom:14px}
+.ticket::before{content:'';position:absolute;top:0;left:0;right:0;height:6px;border-radius:6px 6px 0 0;background-image:radial-gradient(circle,var(--paper) 42%,transparent 43%);background-size:13px 13px;background-position:1px -4px}
+.tk-h{font-family:'Oswald',sans-serif;font-weight:600;font-size:14px;text-align:center;margin:6px 0 10px;letter-spacing:.02em;color:var(--ink)}
+
+/* ---- pantalla de login — marca tipo libreta + tarjeta de PIN tipo
+   "terminal posnet", en su variante clara sobre el mostrador de papel ---- */
+.loginBrand{background:linear-gradient(160deg,var(--ledger-case-hi),var(--ledger-case));color:var(--ledger-txt-hi);text-align:center;padding:34px 20px 28px;position:relative;overflow:hidden}
+.loginBrand::after{content:'';position:absolute;inset:0;background-image:radial-gradient(rgba(255,255,255,.05) 1.4px, transparent 1.4px);background-size:15px 15px;pointer-events:none}
+.loginBrand-mark{font-size:32px;line-height:1;margin-bottom:8px;position:relative}
+.loginBrand-word{font-family:'Oswald',sans-serif;font-weight:600;font-size:26px;letter-spacing:.02em;color:var(--ledger-txt-hi);text-transform:uppercase;position:relative}
+.loginBrand-tag{font-family:'IBM Plex Mono',monospace;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:#5cff9e;margin-top:6px;position:relative}
+.loginStepTitle{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);text-transform:uppercase;letter-spacing:.05em;text-align:center;margin:2px 0 10px}
+.pinTerminal{background:var(--paper-raised);border:1px solid var(--line);border-radius:16px;padding:20px 18px 16px;box-shadow:0 16px 34px -20px rgba(30,25,15,.4);margin-bottom:14px}
+.pinTerminal-brand{text-align:center;color:var(--steel);font-size:10.5px;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.05em;margin-bottom:12px}
+.pinTerminal-brand b{color:var(--ink)}
+.pinLcd{background:var(--go-soft);border-radius:8px;padding:12px 10px;margin-bottom:12px}
+.pinLcd-row{display:flex;justify-content:center;gap:12px}
+.pinLcd-seg{width:11px;height:16px;border-radius:2px;background:rgba(47,107,79,.2)}
+.pinLcd-seg.on{background:var(--go);box-shadow:0 0 0 3px rgba(47,107,79,.18)}
+#pinInp{width:100%;box-sizing:border-box;border:1.5px solid var(--line);border-radius:8px;padding:10px;text-align:center;background:#fff;color:var(--ink);font-family:'IBM Plex Mono',monospace}
+.tpad{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+.tkey{padding:13px 0;background:var(--paper);border:1px solid var(--line);border-radius:8px;color:var(--ink);font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;cursor:pointer}
+.tkey:active{transform:translateY(1px);background:var(--go-soft)}
+.tkey.op{font-size:10px;letter-spacing:.03em;color:var(--steel)}
+
+/* ── CXC/CXP: fila clickeable estilo "pc-card" + detalle expandible ── */
 .cxcRow{cursor:pointer}
+.cxcRow span:first-child{font-family:'Oswald',sans-serif;font-weight:600;font-size:13px;color:var(--ink)}
+.cxcRow span:last-child{font-family:'IBM Plex Mono',monospace;padding:4px 10px;border-radius:20px;background:var(--urgent-soft)}
 .cxcDet{font-size:11.5px}
-/* ── modal confirmar entrega (método de cobro) ── */
-.meOverlay{display:none;position:fixed;inset:0;background:rgba(20,28,45,.55);z-index:9998;align-items:center;justify-content:center;padding:16px}
+.ctaRow{display:flex;gap:6px;margin-top:8px}
+.ctaRow input,.ctaRow select{flex:1;min-width:0;border:1.5px solid var(--line);border-radius:6px;padding:7px 8px;font-size:12px;background:#fff;color:var(--ink);font-family:'IBM Plex Mono',monospace}
+.ctaRow button{flex:none;padding:9px 12px;border:none;border-radius:6px;font-size:10.5px;font-weight:700;color:#fff;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.02em}
+.lockNote{font-size:10px;color:var(--warn);margin-top:8px;text-align:center;font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.02em}
+
+/* ── modal confirmar entrega (método de cobro) — mismo "ticket" de papel ── */
+.meOverlay{display:none;position:fixed;inset:0;background:rgba(30,25,15,.55);z-index:9998;align-items:center;justify-content:center;padding:16px}
 .meOverlay.show{display:flex}
 .meBox{max-width:400px;width:100%;max-height:88vh;overflow-y:auto;margin:0}
+
+/* ── AÑAÑAI · ETAPA 5 — Proveedores/Gastos/Compras/Recetas/Consultas ── */
+.searchBox{width:100%;padding:9px 11px;border:1.5px solid var(--line);border-radius:8px;font-size:13px;margin-bottom:10px;box-sizing:border-box;background:#fff;color:var(--ink);font-family:'IBM Plex Sans',Arial,sans-serif}
+.subtabs{display:flex;gap:6px;margin-bottom:12px}
+.subtab{flex:1;text-align:center;padding:9px 4px;border-radius:8px;border:1.5px solid var(--line);font-size:11px;font-weight:700;color:var(--steel);background:var(--paper-raised);font-family:'IBM Plex Sans',Arial,sans-serif}
+.subtab.on{background:var(--go);color:#fff;border-color:var(--go)}
+.consFiltros{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px}
+.consFiltros select{flex:1;min-width:120px;padding:8px;border:1.5px solid var(--line);border-radius:8px;font-size:12px;background:#fff;color:var(--ink);font-family:'IBM Plex Sans',Arial,sans-serif}
+.consResumen{display:flex;gap:8px;margin-bottom:12px}
+.consResumen .box{flex:1;background:var(--go-soft);border-radius:8px;padding:9px;text-align:center}
+.consResumen .box .l{font-size:9px;color:var(--steel);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;letter-spacing:.02em}
+.consResumen .box .v{font-size:14px;font-weight:700;color:var(--go);font-family:'IBM Plex Mono',monospace}
 </style>
 </head>
 <body>
 
 <!-- ══════════════════ LOGIN ══════════════════ -->
 <div id="loginView">
-  <div class="hdr" style="background:#2F5496"><h2>🧾 AÑAÑAI · Pedidos</h2><p>Elegí tu rol para ingresar</p></div>
+  <div class="loginBrand">
+    <div class="loginBrand-mark">🥖</div>
+    <div class="loginBrand-word">Añañai</div>
+    <div class="loginBrand-tag">Sistema de gestión</div>
+  </div>
   <div class="body">
     <div id="rolesPaso" class="roleBtns">
+      <div class="loginStepTitle">Elegí tu rol para ingresar</div>
       <button class="roleBtn" onclick="elegirRol('vendedor')">🛵 Vendedor</button>
       <button class="roleBtn" onclick="elegirRol('gerente')">🧑‍💼 Gerente</button>
       <button class="roleBtn" onclick="elegirRol('dueno')">👑 Dueño</button>
@@ -81,11 +215,27 @@ body{max-width:560px;margin:0 auto;background:#f5f7fa}
     </div>
 
     <div id="pinPaso" style="display:none">
-      <div class="field"><label id="pinLabel">PIN</label>
-        <input type="password" id="pinInp" inputmode="numeric" maxlength="4" placeholder="••••" class="pinDots" style="font-size:22px;letter-spacing:8px" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4)">
+      <div class="pinTerminal">
+        <div class="pinTerminal-brand">Ingreso · <b id="pinLabel">PIN</b></div>
+        <div class="pinLcd"><div class="pinLcd-row" id="pinLcdRow"></div></div>
+        <input type="password" id="pinInp" inputmode="numeric" maxlength="4" placeholder="••••" class="pinDots" style="font-size:20px;letter-spacing:8px;margin-bottom:2px" oninput="this.value=this.value.replace(/[^0-9]/g,'').slice(0,4); _renderPinLcd();">
+        <div class="tpad">
+          <button type="button" class="tkey" onclick="_pinKey('1')">1</button>
+          <button type="button" class="tkey" onclick="_pinKey('2')">2</button>
+          <button type="button" class="tkey" onclick="_pinKey('3')">3</button>
+          <button type="button" class="tkey" onclick="_pinKey('4')">4</button>
+          <button type="button" class="tkey" onclick="_pinKey('5')">5</button>
+          <button type="button" class="tkey" onclick="_pinKey('6')">6</button>
+          <button type="button" class="tkey" onclick="_pinKey('7')">7</button>
+          <button type="button" class="tkey" onclick="_pinKey('8')">8</button>
+          <button type="button" class="tkey" onclick="_pinKey('9')">9</button>
+          <button type="button" class="tkey op" onclick="_pinKey('clear')">LIMP</button>
+          <button type="button" class="tkey" onclick="_pinKey('0')">0</button>
+          <button type="button" class="tkey op" onclick="_pinKey('back')">⌫</button>
+        </div>
       </div>
       <div class="btns">
-        <button class="b1" style="background:#2F5496" onclick="intentarLogin()">Ingresar</button>
+        <button class="b1" onclick="intentarLogin()">Ingresar</button>
         <button class="b2" onclick="volverARoles()">← Volver</button>
       </div>
     </div>
@@ -95,7 +245,7 @@ body{max-width:560px;margin:0 auto;background:#f5f7fa}
         <input type="text" id="nombreInp" list="nombresSugeridos" placeholder="Elegí o escribí tu nombre">
         <datalist id="nombresSugeridos"></datalist>
       </div>
-      <div class="btns"><button class="b1" style="background:#2F5496" onclick="confirmarNombre()">Continuar</button></div>
+      <div class="btns"><button class="b1" onclick="confirmarNombre()">Continuar</button></div>
     </div>
 
     <div class="msg" id="msgLogin"></div>
@@ -110,41 +260,61 @@ body{max-width:560px;margin:0 auto;background:#f5f7fa}
   </div>
   <div class="tabs" id="tabsWrap"></div>
 
+  <!-- ── INICIO (solo Gerente/Dueño/CFO) ── -->
+  <div class="view" id="view-inicio">
+    <div class="iniWelcome">
+      <div class="iniWelcome-h">Hola,</div>
+      <div class="iniWelcome-name" id="iniNombreRol">—</div>
+    </div>
+    <div class="quickRow">
+      <button type="button" class="quick-btn" onclick="irATab('nuevo')"><span class="qb-ico">➕</span><span class="qb-txt">Nuevo pedido</span></button>
+      <button type="button" class="quick-btn" onclick="irATab('pedidos')"><span class="qb-ico">📋</span><span class="qb-txt">Ver pedidos</span></button>
+      <button type="button" class="quick-btn alt" onclick="irATab('cxc')"><span class="qb-ico">💰</span><span class="qb-txt">Cobros</span></button>
+      <button type="button" class="quick-btn alt" onclick="irATab('gastos')"><span class="qb-ico">🧾</span><span class="qb-txt">Cargar gasto</span></button>
+      <button type="button" class="quick-btn alt" onclick="irATab('compras')"><span class="qb-ico">🚚</span><span class="qb-txt">Compras</span></button>
+      <button type="button" class="quick-btn alt" onclick="irATab('consultas')"><span class="qb-ico">🔎</span><span class="qb-txt">Consultas</span></button>
+    </div>
+  </div>
+
   <!-- ── NUEVO PEDIDO ── -->
   <div class="view" id="view-nuevo">
-    <div class="field"><label>Cliente<span class="req">*</span></label>
-      <select id="npCliente" onchange="onNpClienteChange()"><option value="">— Seleccioná —</option></select>
-    </div>
-    <div class="field"><label>Fecha estimada de despacho<span class="req">*</span> <span style="font-weight:400;font-size:10px;color:#888">— una sola para todo el pedido</span></label>
-      <input type="date" id="npFechaEstimada">
-    </div>
-    <div class="field"><label>Método de cobro <span style="font-weight:400;font-size:10px;color:#888">— se confirma/cambia al entregar</span></label>
-      <div class="pp-row" id="npCondicionRow">
-        <button type="button" class="pp-chip" id="npCondChip_Contado" onclick="elegirCondicionPedido('Contado')"><span class="pp-val" style="font-size:13.5px">Contado</span></button>
-        <button type="button" class="pp-chip" id="npCondChip_Credito" onclick="elegirCondicionPedido('Crédito')"><span class="pp-val" style="font-size:13.5px">Crédito</span></button>
-        <button type="button" class="pp-chip" id="npCondChip_Adefinir" onclick="elegirCondicionPedido('A definir')"><span class="pp-val" style="font-size:12px">A definir</span></button>
+    <div class="keypad">
+      <div class="kp-h">① Cliente y condición</div>
+      <div class="field"><label>Cliente<span class="req">*</span></label>
+        <select id="npCliente" onchange="onNpClienteChange()"><option value="">— Seleccioná —</option></select>
       </div>
-    </div>
-    <div class="field"><label>Producto<span class="req">*</span></label>
-      <select id="npProducto" onchange="onNpProductoChange()"><option value="">— Seleccioná —</option></select>
-    </div>
-    <div class="field" id="npVarianteWrap" style="display:none"><label>Sabor<span class="req">*</span></label>
-      <select id="npVariante" onchange="onNpVarianteChange()"></select>
-    </div>
-    <div class="panel-precios" id="npPanelPrecios"></div>
-    <div class="r2" style="margin-top:10px">
-      <div class="field"><label>Unidades<span class="req">*</span></label>
-        <input type="number" id="npUnidades" min="1" placeholder="0" style="font-size:16px;font-weight:700;text-align:center;color:#2F5496"></div>
-      <div class="field"><label>Precio unitario ($) <span style="font-weight:400;font-size:10px;color:#888">— elegí arriba</span></label>
-        <input type="number" id="npPrecio" min="0" placeholder="Elegí un precio" readonly style="font-weight:700;color:#1F3864;background:#f0f4ff"></div>
-    </div>
-    <div class="btns"><button class="b2" onclick="agregarLinea()">➕ Agregar al pedido</button></div>
+      <div class="field"><label>Fecha estimada de despacho<span class="req">*</span> <span style="font-weight:400;font-size:10px;color:#888">— una sola para todo el pedido</span></label>
+        <input type="date" id="npFechaEstimada">
+      </div>
+      <div class="field"><label>Método de cobro <span style="font-weight:400;font-size:10px;color:#888">— se confirma/cambia al entregar</span></label>
+        <div class="pp-row" id="npCondicionRow">
+          <button type="button" class="pp-chip" id="npCondChip_Contado" onclick="elegirCondicionPedido('Contado')"><span class="pp-val" style="font-size:13.5px">Contado</span></button>
+          <button type="button" class="pp-chip" id="npCondChip_Credito" onclick="elegirCondicionPedido('Crédito')"><span class="pp-val" style="font-size:13.5px">Crédito</span></button>
+          <button type="button" class="pp-chip" id="npCondChip_Adefinir" onclick="elegirCondicionPedido('A definir')"><span class="pp-val" style="font-size:12px">A definir</span></button>
+        </div>
+      </div>
 
-    <div style="margin-top:16px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#5a6580">Pedido actual</div>
-    <div id="carritoWrap" style="margin-top:8px"></div>
+      <div class="kp-h">② Producto y cantidad</div>
+      <div class="field"><label>Producto<span class="req">*</span></label>
+        <select id="npProducto" onchange="onNpProductoChange()"><option value="">— Seleccioná —</option></select>
+      </div>
+      <div class="field" id="npVarianteWrap" style="display:none"><label>Sabor<span class="req">*</span></label>
+        <select id="npVariante" onchange="onNpVarianteChange()"></select>
+      </div>
+      <div class="panel-precios" id="npPanelPrecios"></div>
+      <div class="r2" style="margin-top:10px">
+        <div class="field"><label>Unidades<span class="req">*</span></label>
+          <input type="number" id="npUnidades" min="1" placeholder="0" style="font-size:16px;font-weight:700;text-align:center;color:#5cff9e"></div>
+        <div class="field"><label>Precio unitario ($) <span style="font-weight:400;font-size:10px;color:#888">— elegí arriba</span></label>
+          <input type="number" id="npPrecio" min="0" placeholder="Elegí un precio" readonly style="font-weight:700;color:#5cff9e;background:#0a0c11"></div>
+      </div>
+      <button class="add-key" onclick="agregarLinea()">➕ Agregar al pedido</button>
+    </div>
 
-    <div class="btns" style="margin-top:12px">
-      <button class="b1" style="background:#2F5496" onclick="enviarPedido()">💾 Enviar pedido</button>
+    <div class="ticket">
+      <div class="tk-h">🧾 Pedido actual</div>
+      <div id="carritoWrap"></div>
+      <button class="b1" style="margin-top:12px;width:100%" onclick="enviarPedido()">💾 Enviar pedido</button>
     </div>
     <div class="msg" id="msgNuevo"></div>
   </div>
@@ -169,8 +339,153 @@ body{max-width:560px;margin:0 auto;background:#f5f7fa}
 
   <!-- ── CXC (gerente/dueño/cfo) ── -->
   <div class="view" id="view-cxc">
-    <div class="hint hint-info show" style="margin-bottom:10px">Tocá un cliente para ver sus últimos cobros y cruzar la deuda contra la frecuencia de pago.</div>
+    <div class="hint hint-info show" style="margin-bottom:10px">Tocá un cliente para ver sus últimos cobros, cobrarle contra el saldo total o (CFO) ajustarle la cuenta.</div>
     <div id="cxcWrap"></div>
+    <div class="msg" id="msgCxc"></div>
+  </div>
+
+  <!-- ── PROVEEDORES / CXP (gerente/dueño/cfo) ── -->
+  <div class="view" id="view-proveedores">
+    <div class="hint hint-info show" style="margin-bottom:10px">Tocá un proveedor para ver sus últimos pagos, pagarle contra el saldo total o (CFO) ajustarle la cuenta.</div>
+    <div id="provWrap"></div>
+    <div class="msg" id="msgProveedores"></div>
+  </div>
+
+  <!-- ── GASTOS — registro directo, no ligado a una compra de insumos ── -->
+  <div class="view" id="view-gastos">
+    <div class="keypad">
+      <div class="kp-h">🧾 Nuevo gasto</div>
+      <div class="field"><label>Grupo<span class="req">*</span></label>
+        <select id="gasGrupoSel" onchange="onGasGrupoChange()"></select>
+      </div>
+      <div class="field"><label>Subgrupo<span class="req">*</span></label>
+        <select id="gasSubSel" onchange="onGasSubChange()"></select>
+        <div id="gasSubHint" style="font-size:10.5px;color:#888;margin-top:4px"></div>
+      </div>
+      <div class="field"><label>Proveedor <span style="font-weight:400;font-size:10px;color:#888">— opcional, dejar en blanco para sueldos/genérico</span></label>
+        <select id="gasProvSel"><option value="">— Sin proveedor / genérico —</option></select>
+      </div>
+      <div class="field"><label>Descripción</label><input type="text" id="gasDescInp" placeholder="Ej: sueldo Marzo — Juan Pérez"></div>
+      <div class="field"><label>Monto<span class="req">*</span></label>
+        <input type="number" id="gasMontoInp" min="0" placeholder="0" style="font-size:16px;font-weight:700;text-align:center;color:#5cff9e"></div>
+      <div class="field"><label>Condición<span class="req">*</span></label>
+        <div class="pp-row">
+          <button type="button" class="pp-chip" id="gasCondChip_Contado" onclick="elegirCondicionGasto('Contado')"><span class="pp-val" style="font-size:13.5px">Contado</span></button>
+          <button type="button" class="pp-chip" id="gasCondChip_Cuenta" onclick="elegirCondicionGasto('Cuenta corriente')"><span class="pp-val" style="font-size:12px">Cta. corriente</span></button>
+        </div>
+      </div>
+      <div class="field" id="gasDiasWrap" style="display:none"><label>Días de pago</label><input type="number" id="gasDiasInp" min="0" value="0"></div>
+      <div class="field"><label>Caja</label>
+        <select id="gasCajaSel"><option value="Distribuidora">Distribuidora</option><option value="Añañai">Añañai</option></select>
+      </div>
+      <div class="field"><label>Observaciones</label><input type="text" id="gasObsInp"></div>
+      <button class="add-key" onclick="registrarGastoUI()">💾 Registrar gasto</button>
+    </div>
+    <div class="msg" id="msgGastos"></div>
+  </div>
+
+  <!-- ── COMPRAS / INSUMOS / RECETAS (gerente/dueño/cfo) ── -->
+  <div class="view" id="view-compras">
+    <div class="subtabs">
+      <button type="button" class="subtab on" id="comSub_comprar" onclick="setComprasSub('comprar')">🛒 Comprar</button>
+      <button type="button" class="subtab" id="comSub_recetas" onclick="setComprasSub('recetas')">📖 Recetas</button>
+    </div>
+
+    <div id="comprasVistaComprar">
+      <div class="keypad">
+        <div class="kp-h">① Proveedor de esta compra</div>
+        <div class="field"><label>Proveedor<span class="req">*</span></label>
+          <input type="text" id="comProveedorInp" list="provsSugeridos" placeholder="Nombre del proveedor">
+          <datalist id="provsSugeridos"></datalist>
+        </div>
+        <div class="field"><label>Condición<span class="req">*</span></label>
+          <div class="pp-row">
+            <button type="button" class="pp-chip" id="comCondChip_Contado" onclick="elegirCondicionCompra('Contado')"><span class="pp-val" style="font-size:13.5px">Contado</span></button>
+            <button type="button" class="pp-chip" id="comCondChip_Cuenta" onclick="elegirCondicionCompra('Cuenta corriente')"><span class="pp-val" style="font-size:12px">Cta. corriente</span></button>
+          </div>
+        </div>
+        <div class="field" id="comDiasWrap" style="display:none"><label>Días de pago</label><input type="number" id="comDiasInp" min="0" value="0"></div>
+
+        <div class="kp-h">② Agregar insumos</div>
+        <div class="field"><label>Insumo<span class="req">*</span></label>
+          <select id="comInsumoSel"><option value="">— Seleccioná —</option></select>
+        </div>
+        <div class="r2">
+          <div class="field"><label>Cantidad<span class="req">*</span></label><input type="number" id="comCantidadInp" min="0" placeholder="0"></div>
+          <div class="field"><label>Precio unitario ($)<span class="req">*</span></label><input type="number" id="comPrecioInp" min="0" placeholder="0"></div>
+        </div>
+        <button class="add-key" onclick="agregarLineaCompra()">➕ Agregar a la compra</button>
+      </div>
+
+      <div class="ticket">
+        <div class="tk-h">🧾 Compra actual</div>
+        <div id="comCarritoWrap"></div>
+        <button class="b1" style="margin-top:12px;width:100%" onclick="cerrarCompraUI()">✅ Cerrar compra</button>
+      </div>
+
+      <div style="margin-top:6px"><button class="b2" onclick="toggleNuevoInsumo()">+ Nuevo insumo</button></div>
+      <div id="nuevoInsumoWrap" style="display:none;margin-top:10px" class="card">
+        <div class="field"><label>Nombre<span class="req">*</span></label><input type="text" id="insNombreInp" placeholder="Ej: Queso rallado"></div>
+        <div class="field"><label>Familia<span class="req">*</span></label>
+          <input type="text" id="insFamiliaInp" list="familiasSugeridas" placeholder="Ej: Lácteos y grasas">
+          <datalist id="familiasSugeridas"></datalist>
+        </div>
+        <div class="field"><label>Unidad</label><input type="text" id="insUnidadInp" placeholder="kg" value="kg"></div>
+        <div class="btns"><button class="b1" onclick="crearInsumoUI()">Crear insumo</button></div>
+      </div>
+
+      <div class="sectionLabel">Insumos y stock actual</div>
+      <div id="insumosListWrap" style="margin-top:8px"></div>
+    </div>
+
+    <div id="comprasVistaRecetas" style="display:none">
+      <div class="field"><label>Producto<span class="req">*</span></label>
+        <select id="recProductoSel" onchange="cargarRecetaDeProductoUI()"><option value="">— Seleccioná —</option></select>
+      </div>
+      <div id="recLineasWrap" style="margin-top:8px"></div>
+      <div class="sectionLabel" style="margin-top:10px">Agregar familia a la receta</div>
+      <div class="r2">
+        <div class="field"><label>Familia<span class="req">*</span></label>
+          <input type="text" id="recFamiliaInp" list="familiasSugeridas2" placeholder="Ej: Harinas y cereales">
+          <datalist id="familiasSugeridas2"></datalist>
+        </div>
+        <div class="field"><label>Cantidad por unidad<span class="req">*</span></label><input type="number" id="recCantidadInp" min="0" step="0.001" placeholder="0"></div>
+      </div>
+      <div class="field"><label>Unidad</label><input type="text" id="recUnidadInp" placeholder="kg" value="kg"></div>
+      <div class="btns"><button class="b2" onclick="agregarLineaReceta()">➕ Agregar a la receta</button></div>
+      <div class="btns" style="margin-top:14px"><button class="b1" onclick="guardarRecetaUI()">💾 Guardar receta</button></div>
+      <div id="recCostoWrap" style="margin-top:10px"></div>
+    </div>
+
+    <div class="msg" id="msgCompras"></div>
+  </div>
+
+  <!-- ── CONSULTAS (gerente/dueño/cfo) ── -->
+  <div class="view" id="view-consultas">
+    <div class="consFiltros">
+      <select id="consModuloSel" onchange="onConsModuloChange()">
+        <option value="pedidos">Pedidos</option>
+        <option value="gastos">Gastos</option>
+        <option value="cobros">Cobros</option>
+        <option value="pagos">Pagos a proveedores</option>
+      </select>
+      <select id="consPeriodoSel" onchange="aplicarFiltrosConsultas()">
+        <option value="0">Todo el historial</option>
+        <option value="7">Últimos 7 días</option>
+        <option value="30" selected>Últimos 30 días</option>
+        <option value="90">Últimos 90 días</option>
+        <option value="365">Último año</option>
+      </select>
+    </div>
+    <div class="consFiltros">
+      <select id="consEntidadSel" onchange="aplicarFiltrosConsultas()"><option value="">Todos</option></select>
+      <select id="consGrupoSel" onchange="aplicarFiltrosConsultas()" style="display:none"><option value="">Todos los grupos</option></select>
+    </div>
+    <input type="text" id="consBuscarInp" class="searchBox" placeholder="Buscar por texto…" oninput="aplicarFiltrosConsultas()">
+    <div class="consResumen" id="consResumenWrap"></div>
+    <div class="btns" style="margin-bottom:10px"><button class="b2" onclick="exportarConsultasCSV()">⬇ Exportar CSV</button></div>
+    <div id="consResultsWrap"></div>
+    <div class="msg" id="msgConsultas"></div>
   </div>
 
   <!-- ── CONFIG PINES (solo CFO) ── -->
@@ -184,7 +499,7 @@ body{max-width:560px;margin:0 auto;background:#f5f7fa}
 <!-- ── MODAL: confirmar entrega + método de cobro ── -->
 <div class="meOverlay" id="modalEntregaOverlay">
   <div class="card meBox">
-    <div style="font-weight:700;color:#2F5496;margin-bottom:4px">🚚 Confirmar entrega</div>
+    <div style="font-family:'Oswald',sans-serif;font-weight:600;font-size:15px;color:var(--ink);margin-bottom:4px">🚚 Confirmar entrega</div>
     <div style="font-size:12px;color:#888;margin-bottom:12px">Total del pedido: <b id="meMonto"></b></div>
     <div class="field"><label>¿Cómo paga el cliente?<span class="req">*</span></label>
       <div class="pp-row">
@@ -203,7 +518,7 @@ body{max-width:560px;margin:0 auto;background:#f5f7fa}
       <input type="text" id="meReferencia" placeholder="N° de transferencia / referencia (opcional)" style="margin-top:8px">
     </div>
     <div class="btns" style="margin-top:10px">
-      <button class="b1" style="background:#1a7a40" onclick="confirmarEntrega()">✅ Confirmar entrega</button>
+      <button class="b1" style="background:var(--go)" onclick="confirmarEntrega()">✅ Confirmar entrega</button>
       <button class="b2" onclick="cerrarModalEntrega()">Cancelar</button>
     </div>
     <div class="msg" id="msgModalEntrega"></div>
@@ -237,6 +552,24 @@ function elegirRol(rol){
   document.getElementById('pinLabel').textContent='PIN de '+NOMBRES_ROL[rol];
   document.getElementById('pinInp').value='';
   document.getElementById('pinInp').focus();
+  _renderPinLcd();
+}
+// Teclado numérico decorativo del PIN (además del input nativo, que sigue
+// funcionando igual que antes) — solo escribe en #pinInp y dispara el mismo
+// oninput que ya sanitiza el valor; no cambia en nada la lógica de login.
+function _pinKey(k){
+  var inp=document.getElementById('pinInp');
+  if(k==='clear'){ inp.value=''; }
+  else if(k==='back'){ inp.value=inp.value.slice(0,-1); }
+  else if(inp.value.length<4){ inp.value+=k; }
+  _renderPinLcd();
+}
+function _renderPinLcd(){
+  var inp=document.getElementById('pinInp'), row=document.getElementById('pinLcdRow');
+  if(!inp || !row) return;
+  var n=inp.value.length, h='';
+  for(var i=0;i<4;i++){ h+='<div class="pinLcd-seg'+(i<n?' on':'')+'"></div>'; }
+  row.innerHTML=h;
 }
 function volverARoles(){
   document.getElementById('pinPaso').style.display='none';
@@ -315,20 +648,46 @@ function entrarAlApp(){
     construirMapasProductos();
     poblarProductos();
   }).getCatalogoParaPedidos();
+  // AÑAÑAI · ETAPA 5 — datos de referencia de las pestañas nuevas
+  // (Proveedores/Gastos/Compras/Recetas/Consultas), en un solo viaje al
+  // entrar, igual criterio que CLIENTES/PRODUCTOS de arriba. Vendedor
+  // nunca ve estas pestañas (ver construirTabs), así que no hace falta
+  // pedir esto para ese rol.
+  if(ROL==='gerente'||ROL==='dueno'||ROL==='cfo'){
+    cargarTaxonomiaGastos();
+    poblarProveedoresGastos();
+    cargarInsumos();
+  }
   var hoy=new Date();
   var minFecha=hoy.getFullYear()+'-'+String(hoy.getMonth()+1).padStart(2,'0')+'-'+String(hoy.getDate()).padStart(2,'0');
   document.getElementById('npFechaEstimada').min=minFecha;
   elegirCondicionPedido('A definir');
-  irATab('pedidos');
+  if(ROL==='gerente'||ROL==='dueno'||ROL==='cfo'){
+    var iniN=document.getElementById('iniNombreRol');
+    if(iniN) iniN.textContent=NOMBRES_ROL[ROL];
+    irATab('inicio');
+  } else {
+    irATab('pedidos');
+  }
 }
 function construirTabs(){
   var tabs=[{id:'nuevo',lbl:'➕ Nuevo'},{id:'pedidos',lbl:'📋 Pedidos'},{id:'calendario',lbl:'📅 Calendario'},{id:'stock',lbl:'📦 Stock'}];
-  if(ROL==='gerente'||ROL==='dueno'||ROL==='cfo') tabs.push({id:'cxc',lbl:'💰 CXC'});
+  // AÑAÑAI · ETAPA 5 — Cobros (ex-CXC) ahora tiene 4 hermanas nuevas:
+  // Proveedores (CXP), Gastos, Compras/Insumos/Recetas y Consultas.
+  // Mismo gate que ya tenía CXC — Gerente/Dueño/CFO, nunca Vendedor.
+  if(ROL==='gerente'||ROL==='dueno'||ROL==='cfo'){
+    tabs.unshift({id:'inicio',lbl:'🏠 Inicio'});
+    tabs.push({id:'cxc',lbl:'💰 Cobros'});
+    tabs.push({id:'proveedores',lbl:'🏭 Proveedores'});
+    tabs.push({id:'gastos',lbl:'🧾 Gastos'});
+    tabs.push({id:'compras',lbl:'🚚 Compras'});
+    tabs.push({id:'consultas',lbl:'🔎 Consultas'});
+  }
   if(ROL==='cfo') tabs.push({id:'config',lbl:'⚙ PINs'});
   var w=document.getElementById('tabsWrap'); w.innerHTML='';
-  tabs.forEach(function(t){
+  tabs.forEach(function(t,i){
     var b=document.createElement('div');
-    b.className='tab'; b.textContent=t.lbl; b.dataset.tab=t.id;
+    b.className='tab'; b.innerHTML='<span class="tabIdx">'+String(i+1).padStart(2,'0')+'</span>'+t.lbl; b.dataset.tab=t.id;
     b.onclick=function(){ irATab(t.id); };
     w.appendChild(b);
   });
@@ -336,29 +695,46 @@ function construirTabs(){
 function irATab(id){
   document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('on',t.dataset.tab===id);});
   document.querySelectorAll('.view').forEach(function(vv){vv.classList.toggle('on', vv.id==='view-'+id);});
-  if(id==='pedidos')    cargarPedidos();
-  if(id==='calendario') cargarCalendario();
-  if(id==='stock')      cargarStock();
-  if(id==='cxc')        cargarCXC();
-  if(id==='config')     cargarConfigPines();
+  if(id==='pedidos')     cargarPedidos();
+  if(id==='calendario')  cargarCalendario();
+  if(id==='stock')       cargarStock();
+  if(id==='cxc')         cargarCXC();
+  if(id==='proveedores') cargarProveedores();
+  if(id==='compras')     cargarInsumos();
+  if(id==='consultas'){  poblarConsEntidad(); aplicarFiltrosConsultas(); }
+  if(id==='config')      cargarConfigPines();
 }
 
 // ── NUEVO PEDIDO ─────────────────────────────────────────────────
 function poblarClientes(){
   var sel=document.getElementById('npCliente');
   sel.innerHTML='<option value="">— Seleccioná —</option>' + CLIENTES.map(function(c){
-    return '<option value="'+c.id+'" data-nombre="'+c.nombre+'" data-cond="'+c.condicion+'">'+c.nombre+'</option>';
+    return '<option value="'+esc(c.id)+'" data-nombre="'+esc(c.nombre)+'" data-cond="'+esc(c.condicion)+'">'+esc(c.nombre)+'</option>';
   }).join('');
 }
 function poblarProductos(){
   var sel=document.getElementById('npProducto');
   var nombres=[]; PRODUCTOS.forEach(function(p){ if(nombres.indexOf(p.nombre)===-1) nombres.push(p.nombre); });
-  sel.innerHTML='<option value="">— Seleccioná —</option>' + nombres.map(function(n){return '<option value="'+n+'">'+n+'</option>';}).join('');
+  sel.innerHTML='<option value="">— Seleccioná —</option>' + nombres.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');
 }
 
 // Normalización: minúsculas, sin acentos, sin espacios — mismo criterio
 // que usa el servidor (_norm en Código.gs) para no fallar por un tilde.
 function norm(s){ return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]/g,''); }
+
+// ── SEGURIDAD (auditoría XSS) ─────────────────────────────────────────
+// Todo texto que viene de la planilla (nombres de clientes, productos,
+// observaciones, motivos...) lo escribió una persona alguna vez. Pegado
+// tal cual dentro de un innerHTML, un nombre como <img src=x onerror=...>
+// se EJECUTA en el navegador de quien lo mira (y podría leer su sesión).
+// Por eso TODO dato dinámico que entra a un innerHTML pasa por esc()
+// (texto y atributos) o por ja() (argumento de texto dentro de un
+// onclick="..."). Los números ya convertidos con Number()/Math.round()
+// no necesitan escape.
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+function ja(s){ return esc(JSON.stringify(String(s==null?'':s))); }
 
 function construirMapasProductos(){
   PROD_MAP={}; PROD_MAP_N={}; ANANAI_N={};
@@ -446,7 +822,7 @@ function onNpProductoChange(){
   limpiarPrecioNP();
   if(FLAVORS[prod]){
     sel.innerHTML='<option value="">— Elegí el sabor —</option>' + FLAVORS[prod].sabores.map(function(s){
-      return '<option value="'+s.variante+'"'+(s.tier?' data-tier="'+s.tier+'"':'')+'>'+s.sabor+'</option>';
+      return '<option value="'+esc(s.variante)+'"'+(s.tier?' data-tier="'+esc(s.tier)+'"':'')+'>'+esc(s.sabor)+'</option>';
     }).join('');
     wrap.style.display='block';
   } else {
@@ -478,9 +854,9 @@ function mostrarPreciosNP(prod,tier){
   var esEspecial=(pa!==null);
   var pl=pLibreDe(prod,tier);
   var h='<div class="pp-title">💡 Elegí el precio — no se escribe a mano</div><div class="pp-row">';
-  if(pl!=null) h+='<button type="button" class="pp-chip pp-libre" onclick="usarPrecioNP('+pl+')"><span class="pp-lbl">Precio Libre</span><span class="pp-val">$'+pl.toLocaleString('es-AR')+'</span></button>';
-  h+='<button type="button" class="pp-chip" onclick="usarPrecioNP('+p1+')"><span class="pp-lbl">Precio P1</span><span class="pp-val">$'+p1.toLocaleString('es-AR')+'</span></button>';
-  if(esEspecial) h+='<button type="button" class="pp-chip pp-ana" onclick="usarPrecioNP('+ananai+')"><span class="pp-lbl">Precio Añañai</span><span class="pp-val">$'+ananai.toLocaleString('es-AR')+'</span></button>';
+  if(pl!=null) h+='<button type="button" class="pp-chip pp-libre" onclick="usarPrecioNP('+Number(pl)+')"><span class="pp-lbl">Precio Libre</span><span class="pp-val">$'+pl.toLocaleString('es-AR')+'</span></button>';
+  h+='<button type="button" class="pp-chip" onclick="usarPrecioNP('+Number(p1)+')"><span class="pp-lbl">Precio P1</span><span class="pp-val">$'+p1.toLocaleString('es-AR')+'</span></button>';
+  if(esEspecial) h+='<button type="button" class="pp-chip pp-ana" onclick="usarPrecioNP('+Number(ananai)+')"><span class="pp-lbl">Precio Añañai</span><span class="pp-val">$'+ananai.toLocaleString('es-AR')+'</span></button>';
   h+='</div>';
   if(esAnanaiCliente&&esEspecial) h+='<div class="pp-hint">🏪 Cliente Añañai: corresponde el precio Añañai ($'+ananai.toLocaleString('es-AR')+').</div>';
   panel.innerHTML=h;
@@ -528,7 +904,7 @@ function renderCarrito(){
   if(!carrito.length){ w.innerHTML='<div class="empty2">Todavía no agregaste productos.</div>'; return; }
   var h='';
   carrito.forEach(function(it,i){
-    h+='<div class="cartLine"><div class="fl"><b>'+it.producto+(it.variante?' — '+it.variante:'')+'</b><br>'
+    h+='<div class="cartLine"><div class="fl"><b>'+esc(it.producto)+(it.variante?' — '+esc(it.variante):'')+'</b><br>'
       +it.unidades+' u. × $'+it.precio.toLocaleString('es-AR')+' = $'+(it.unidades*it.precio).toLocaleString('es-AR')+'</div>'
       +'<button onclick="quitarLinea('+i+')">✕</button></div>';
   });
@@ -553,10 +929,10 @@ function cargarPedidos(){
   document.getElementById('pedidosWrap').innerHTML='<div class="empty2">Cargando…</div>';
   google.script.run
     .withSuccessHandler(function(r){
-      if(!r.ok){ document.getElementById('pedidosWrap').innerHTML='<div class="empty2" style="color:#b82020">'+r.mensaje+'</div>'; return; }
+      if(!r.ok){ document.getElementById('pedidosWrap').innerHTML='<div class="empty2" style="color:var(--urgent)">'+esc(r.mensaje)+'</div>'; return; }
       renderPedidos(r.pedidos);
     })
-    .withFailureHandler(function(e){ document.getElementById('pedidosWrap').innerHTML='Error: '+e.message; })
+    .withFailureHandler(function(e){ document.getElementById('pedidosWrap').textContent='Error: '+e.message; })
     .listarPedidos(TOKEN);
 }
 var PEDIDOS_LINEAS_POR_ID={};
@@ -579,40 +955,40 @@ function renderPedidos(pedidos){
     var condTxt=(p0.condicion==='Contado'||p0.condicion==='Crédito') ? ' · 💳 '+p0.condicion : '';
     h+='<div class="card">'
       +'<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px">'
-      +'<div><b>'+p0.cliente+'</b><div style="font-size:11px;color:#888">'+p0.fecha+' · '+(p0.vendedor||'—')
-      +(p0.fechaEstimada?' · despacho '+p0.fechaEstimada:'')+condTxt+'</div></div>'
-      +'<span class="badge '+claseEstado+'">'+estado+'</span></div>';
+      +'<div><b>'+esc(p0.cliente)+'</b><div style="font-size:11px;color:#888">'+esc(p0.fecha)+' · '+esc(p0.vendedor||'—')
+      +(p0.fechaEstimada?' · despacho '+esc(p0.fechaEstimada):'')+condTxt+'</div></div>'
+      +'<span class="badge '+esc(claseEstado)+'">'+esc(estado)+'</span></div>';
     var puedeEditarLineas = puedeGestionar && estado==='Terminado';
     lineas.forEach(function(l){
       if(puedeEditarLineas){
         PEDIDOS_LINEAS_POR_ID[l.id]={producto:l.producto,variante:l.variante,unidad:l.unidad,unidades:Number(l.unidades)||0};
       }
-      h+='<div class="linea"><span>'+l.producto+(l.variante?' ('+l.variante+')':'')+' × '+l.unidades+'</span>'
+      h+='<div class="linea"><span>'+esc(l.producto)+(l.variante?' ('+esc(l.variante)+')':'')+' × '+esc(l.unidades)+'</span>'
         +'<span style="display:flex;align-items:center;gap:6px">$'+Math.round(l.monto).toLocaleString('es-AR')
-        +(puedeEditarLineas?' <button type="button" class="editLineaBtn" onclick="editarLineaPedido(\''+l.id+'\')" title="Corregir cantidad">✏️</button>':'')
+        +(puedeEditarLineas?' <button type="button" class="editLineaBtn" onclick="editarLineaPedido('+ja(l.id)+')" title="Corregir cantidad">✏️</button>':'')
         +'</span></div>';
     });
     h+='<div class="linea" style="border-bottom:none;font-weight:700"><span>Total</span><span>$'+Math.round(monto).toLocaleString('es-AR')+'</span></div>';
-    if(p0.motivo) h+='<div style="font-size:11px;color:#b82020;margin-top:4px">Motivo: '+p0.motivo+'</div>';
-    if(p0.editado==='Sí') h+='<div style="font-size:11px;color:#a05010;margin-top:4px">✎ Editado — ver log en la hoja Pedidos</div>';
+    if(p0.motivo) h+='<div style="font-size:11px;color:var(--urgent);margin-top:4px">Motivo: '+esc(p0.motivo)+'</div>';
+    if(p0.editado==='Sí') h+='<div style="font-size:11px;color:var(--warn);margin-top:4px">✎ Editado — ver log en la hoja Pedidos</div>';
 
     if(puedeGestionar){
       h+='<div class="accBtns">';
       if(estado==='Pendiente'){
-        h+='<button style="background:#1a7a40" onclick="accion(\'aceptar\',\''+g+'\')">✅ Aceptar</button>'
-         + '<button style="background:#b82020" onclick="accionConMotivo(\'rechazar\',\''+g+'\')">✕ Rechazar</button>';
+        h+='<button style="background:var(--go)" onclick="accion(\'aceptar\','+ja(g)+')">✅ Aceptar</button>'
+         + '<button style="background:var(--urgent)" onclick="accionConMotivo(\'rechazar\','+ja(g)+')">✕ Rechazar</button>';
       }
       if(estado==='Aceptado'){
-        h+='<button style="background:#2F5496" onclick="accion(\'terminar\',\''+g+'\')">🏁 Terminado</button>'
-         + '<button style="background:#a05010" onclick="accionConMotivo(\'cancelar\',\''+g+'\')">Cancelar</button>';
+        h+='<button style="background:var(--ink)" onclick="accion(\'terminar\','+ja(g)+')">🏁 Terminado</button>'
+         + '<button style="background:var(--warn)" onclick="accionConMotivo(\'cancelar\','+ja(g)+')">Cancelar</button>';
       }
       if(estado==='Terminado'){
         var condPreset=(p0.condicion==='Contado'||p0.condicion==='Crédito') ? p0.condicion : '';
-        h+='<button style="background:#1a7a40" onclick="abrirModalEntrega(\''+g+'\',\''+condPreset+'\','+Math.round(monto)+')">🚚 Entregado</button>'
-         + '<button style="background:#a05010" onclick="accionConMotivo(\'cancelar\',\''+g+'\')">Cancelar</button>';
+        h+='<button style="background:var(--go)" onclick="abrirModalEntrega('+ja(g)+','+ja(condPreset)+','+Math.round(monto)+')">🚚 Entregado</button>'
+         + '<button style="background:var(--warn)" onclick="accionConMotivo(\'cancelar\','+ja(g)+')">Cancelar</button>';
       }
       if(estado==='Entregado' && ROL==='cfo'){
-        h+='<button style="background:#6b21a8" onclick="accionRevertir(\''+g+'\')">↩ Revertir</button>';
+        h+='<button style="background:var(--purple)" onclick="accionRevertir('+ja(g)+')">↩ Revertir</button>';
       }
       h+='</div>';
     }
@@ -621,8 +997,7 @@ function renderPedidos(pedidos){
   w.innerHTML=h;
 }
 // Corrige la cantidad de una línea puntual (PED-ID) mientras está
-// Terminado — antes de marcar Entregado. Usa editarPedido() de Pedidos.gs,
-// que ya existía pero no tenía ningún botón conectado en esta pantalla.
+// Terminado — antes de marcar Entregado. Usa editarPedido() de Pedidos.gs.
 function editarLineaPedido(pedId){
   var info=PEDIDOS_LINEAS_POR_ID[pedId];
   if(!info) return;
@@ -697,9 +1072,7 @@ function meElegirFormaPago(val){
   meFormaPago=val;
   document.querySelectorAll('.meFpChip').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-val')===val); });
 }
-// motivoForzado solo viene seteado en el reintento (ver más abajo, tras
-// confirmar el aviso de "sin stock suficiente").
-function confirmarEntrega(motivoForzado){
+function confirmarEntrega(forzarSinStock, motivoForzado){
   if(!meCondicion){ showMsg('msgModalEntrega','Elegí cómo paga el cliente.',false); return; }
   if(meCondicion==='Contado' && !meFormaPago){ showMsg('msgModalEntrega','Elegí la forma de pago.',false); return; }
   sp(true);
@@ -707,21 +1080,21 @@ function confirmarEntrega(motivoForzado){
     .withSuccessHandler(function(r){
       sp(false);
       if(r.ok){ cerrarModalEntrega(); showMsg('msgPedidos', r.mensaje, true); cargarPedidos(); return; }
+      // AÑAÑAI · ETAPA 1/5 — el backend nunca bloquea la entrega por falta
+      // de stock: en vez de un error definitivo, pide una aclaración (motivo
+      // obligatorio) y, si se confirma, entrega igual — queda anotado en la
+      // hoja "Alertas Stock" con el DES-ID de cada línea forzada.
       if(r.necesitaConfirmacion){
-        var detalle=(r.resultados||[]).filter(function(x){return x.necesitaConfirmacion;})
-          .map(function(x){return '• '+x.mensaje;}).join('\n');
-        var motivo=prompt('⚠ Sin stock suficiente para:\n\n'+detalle
-          +'\n\nSi confirmás, esas líneas se entregan igual y el stock puede quedar en negativo '
-          +'— queda anotado en "Alertas Stock" para revisar después.\n\nEscribí el motivo para confirmar igual:');
-        if(motivo===null){ showMsg('msgModalEntrega', r.mensaje, false); return; }
-        if(!motivo.trim()){ showMsg('msgModalEntrega','El motivo es obligatorio para confirmar igual.',false); return; }
-        confirmarEntrega(motivo.trim());
+        var motivo=prompt(r.mensaje + '\n\n¿Por qué corresponde entregar igual? (obligatorio)');
+        if(motivo===null) return;
+        if(!motivo.trim()){ showMsg('msgModalEntrega','El motivo es obligatorio para entregar sin stock suficiente.',false); return; }
+        confirmarEntrega(true, motivo);
         return;
       }
       showMsg('msgModalEntrega', r.mensaje, false);
     })
     .withFailureHandler(function(e){ sp(false); showMsg('msgModalEntrega','Error: '+e.message,false); })
-    .marcarEntregado(meGrupo, meCondicion, meFormaPago||'', v('meReferencia'), motivoForzado||'', TOKEN);
+    .marcarEntregado(meGrupo, meCondicion, meFormaPago||'', v('meReferencia'), TOKEN, !!forzarSinStock, motivoForzado||'');
 }
 
 // ── REVERTIR UN PEDIDO ENTREGADO (solo CFO) ──────────────────────
@@ -742,21 +1115,21 @@ function cargarCalendario(){
   document.getElementById('calendarioWrap').innerHTML='<div class="empty2">Cargando…</div>';
   google.script.run
     .withSuccessHandler(function(r){
-      if(!r.ok){ document.getElementById('calendarioWrap').innerHTML='<div class="empty2">'+r.mensaje+'</div>'; return; }
+      if(!r.ok){ document.getElementById('calendarioWrap').innerHTML='<div class="empty2">'+esc(r.mensaje)+'</div>'; return; }
       if(!r.dias.length){ document.getElementById('calendarioWrap').innerHTML='<div class="empty2">No hay pedidos Aceptados o Terminados con fecha estimada.</div>'; return; }
       var h='';
       r.dias.forEach(function(d){
-        h+='<div class="card"><div style="font-weight:700;color:#2F5496;margin-bottom:6px">📅 '+d.fecha+'</div>';
+        h+='<div class="card"><div style="font-weight:700;color:var(--ink);margin-bottom:6px">📅 '+esc(d.fecha)+'</div>';
         d.pedidos.forEach(function(p){
           var claseEstado='b-'+p.estado.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-          h+='<div class="linea"><span>'+p.cliente+' — '+p.producto+(p.variante?' ('+p.variante+')':'')+' × '+p.unidades+'</span>'
-            +'<span class="badge '+claseEstado+'" style="margin-left:6px">'+p.estado+'</span></div>';
+          h+='<div class="linea"><span>'+esc(p.cliente)+' — '+esc(p.producto)+(p.variante?' ('+esc(p.variante)+')':'')+' × '+esc(p.unidades)+'</span>'
+            +'<span class="badge '+esc(claseEstado)+'" style="margin-left:6px">'+esc(p.estado)+'</span></div>';
         });
         h+='</div>';
       });
       document.getElementById('calendarioWrap').innerHTML=h;
     })
-    .withFailureHandler(function(e){ document.getElementById('calendarioWrap').innerHTML='Error: '+e.message; })
+    .withFailureHandler(function(e){ document.getElementById('calendarioWrap').textContent='Error: '+e.message; })
     .getCalendarioPedidos(TOKEN);
 }
 
@@ -765,19 +1138,19 @@ function cargarStock(){
   document.getElementById('stockWrap').innerHTML='<div class="empty2">Cargando…</div>';
   google.script.run
     .withSuccessHandler(function(r){
-      if(!r.ok){ document.getElementById('stockWrap').innerHTML='<div class="empty2">'+r.mensaje+'</div>'; return; }
+      if(!r.ok){ document.getElementById('stockWrap').innerHTML='<div class="empty2">'+esc(r.mensaje)+'</div>'; return; }
       if(!r.items.length){ document.getElementById('stockWrap').innerHTML='<div class="empty2">Sin datos de stock.</div>'; return; }
       var h='';
       r.items.sort(function(a,b){return a.producto<b.producto?-1:1;}).forEach(function(it){
-        var color = it.stockTeorico<0 ? '#b82020' : (it.stockTeorico<10 ? '#a05010' : '#1a7a40');
-        h+='<div class="kFila"><span>'+it.producto+'</span>'
-          +'<span style="color:'+color+';font-weight:700">'+it.stockTeorico
-          +' <span style="font-weight:400;color:#888;font-size:10.5px">(real '+it.stockActual
-          +(it.comprometido?' − '+it.comprometido+' comprom.':'')+')</span></span></div>';
+        var color = it.stockTeorico<0 ? 'var(--urgent)' : (it.stockTeorico<10 ? 'var(--warn)' : 'var(--go)');
+        h+='<div class="kFila"><span>'+esc(it.producto)+'</span>'
+          +'<span style="color:'+color+';font-weight:700">'+esc(it.stockTeorico)
+          +' <span style="font-weight:400;color:#888;font-size:10.5px">(real '+esc(it.stockActual)
+          +(it.comprometido?' − '+esc(it.comprometido)+' comprom.':'')+')</span></span></div>';
       });
       document.getElementById('stockWrap').innerHTML=h;
     })
-    .withFailureHandler(function(e){ document.getElementById('stockWrap').innerHTML='Error: '+e.message; })
+    .withFailureHandler(function(e){ document.getElementById('stockWrap').textContent='Error: '+e.message; })
     .getStockTeorico(TOKEN);
 }
 
@@ -788,21 +1161,22 @@ function cargarCXC(){
   cobrosCache={};
   google.script.run
     .withSuccessHandler(function(r){
-      if(!r.ok){ document.getElementById('cxcWrap').innerHTML='<div class="empty2">'+r.mensaje+'</div>'; return; }
+      if(!r.ok){ document.getElementById('cxcWrap').innerHTML='<div class="empty2">'+esc(r.mensaje)+'</div>'; return; }
       var claves=Object.keys(r.cxc).sort(function(a,b){return r.cxc[b]-r.cxc[a];});
       if(!claves.length){ document.getElementById('cxcWrap').innerHTML='<div class="empty2">Sin saldos pendientes.</div>'; return; }
       window._cxcClientes=claves;
+      window._cxcSaldos=r.cxc;
       var h='';
       claves.forEach(function(c,i){
         h+='<div class="card" style="padding:11px 13px;margin-bottom:8px">'
           +'<div class="kFila cxcRow" style="border-bottom:none;padding:0" onclick="toggleCobrosCliente('+i+')">'
-          +'<span>'+c+'</span><span style="font-weight:700;color:#b82020">$'+Math.round(r.cxc[c]).toLocaleString('es-AR')+'</span></div>'
+          +'<span>'+esc(c)+'</span><span style="font-weight:700;color:var(--urgent)">$'+Math.round(r.cxc[c]).toLocaleString('es-AR')+'</span></div>'
           +'<div id="cobrosDet_'+i+'" class="cxcDet" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #eee"></div>'
           +'</div>';
       });
       document.getElementById('cxcWrap').innerHTML=h;
     })
-    .withFailureHandler(function(e){ document.getElementById('cxcWrap').innerHTML='Error: '+e.message; })
+    .withFailureHandler(function(e){ document.getElementById('cxcWrap').textContent='Error: '+e.message; })
     .getCXCParaPedido(TOKEN);
 }
 function toggleCobrosCliente(i){
@@ -813,24 +1187,476 @@ function toggleCobrosCliente(i){
   if(abierto) return;
   det.style.display='block';
   var cliente=window._cxcClientes[i];
-  if(cobrosCache[cliente]){ renderCobrosDet(det, cobrosCache[cliente]); return; }
+  if(cobrosCache[cliente]){ renderCobrosDet(det, cobrosCache[cliente], i); return; }
   det.innerHTML='Cargando últimos cobros…';
   google.script.run
     .withSuccessHandler(function(r){
-      if(!r.ok){ det.innerHTML='<span style="color:#b82020">'+r.mensaje+'</span>'; return; }
+      if(!r.ok){ det.innerHTML='<span style="color:var(--urgent)">'+esc(r.mensaje)+'</span>'; return; }
       cobrosCache[cliente]=r.cobros;
-      renderCobrosDet(det, r.cobros);
+      renderCobrosDet(det, r.cobros, i);
     })
-    .withFailureHandler(function(e){ det.innerHTML='Error: '+e.message; })
+    .withFailureHandler(function(e){ det.textContent='Error: '+e.message; })
     .getUltimosCobrosCliente(cliente, TOKEN);
 }
-function renderCobrosDet(det, cobros){
-  if(!cobros.length){ det.innerHTML='<span style="color:#888">Sin cobros registrados para este cliente.</span>'; return; }
-  var h='<div style="font-weight:700;color:#5a6580;margin-bottom:5px">Últimos '+cobros.length+' cobro(s)</div>';
-  cobros.forEach(function(c){
-    h+='<div class="linea"><span>'+c.fecha+' · '+(c.formaPago||'—')+'</span><span>$'+Math.round(c.neto||c.monto).toLocaleString('es-AR')+'</span></div>';
+// AÑAÑAI · ETAPA 5 — además del historial, ahora esta misma vista deja
+// cobrarle al cliente contra su saldo total (cobrarClienteSaldo,
+// NUEVO-Cuentas.gs) y — solo CFO — ajustarle la cuenta con motivo
+// obligatorio (ajustarSaldoCliente). El índice "i" es el mismo que ya
+// usa toggleCobrosCliente para no tener que escapar el nombre del
+// cliente dentro de un onclick.
+function renderCobrosDet(det, cobros, i){
+  var cliente = window._cxcClientes[i];
+  var saldo = (window._cxcSaldos && window._cxcSaldos[cliente]) || 0;
+  var h = cobros.length
+    ? '<div style="font-weight:700;color:#5a6580;margin-bottom:5px">Últimos '+cobros.length+' cobro(s)</div>'
+      + cobros.map(function(c){ return '<div class="linea"><span>'+esc(c.fecha)+' · '+esc(c.formaPago||'—')+'</span><span>$'+Math.round(c.neto||c.monto).toLocaleString('es-AR')+'</span></div>'; }).join('')
+    : '<span style="color:#888">Sin cobros registrados para este cliente.</span>';
+  if(saldo>0){
+    h += '<div class="ctaRow">'
+      + '<input type="number" id="cxcMonto_'+i+'" value="'+Math.round(saldo)+'" min="0">'
+      + '<select id="cxcForma_'+i+'"><option value="Efectivo">Efectivo</option><option value="Transferencia">Transferencia</option></select>'
+      + '<button style="background:var(--go)" onclick="cobrarClienteUI('+i+')">💰 Cobrar</button>'
+      + '</div>';
+  }
+  if(ROL==='cfo'){
+    h += '<div class="btns" style="margin-top:8px"><button class="b2" onclick="ajustarClienteUI('+i+')">🔒 Ajustar saldo</button></div>';
+  } else {
+    h += '<div class="lockNote">🔒 Ajustar saldo — reservado al CFO</div>';
+  }
+  det.innerHTML = h;
+}
+function cobrarClienteUI(i){
+  var cliente=window._cxcClientes[i];
+  var monto=Number(document.getElementById('cxcMonto_'+i).value);
+  var forma=document.getElementById('cxcForma_'+i).value;
+  if(!monto || monto<=0){ showMsg('msgCxc','Ingresá un monto válido.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgCxc', r.mensaje, r.ok);
+      if(r.ok){ delete cobrosCache[cliente]; cargarCXC(); }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgCxc','Error: '+e.message,false); })
+    .cobrarClienteSaldo('', cliente, monto, forma, '', '', TOKEN, '');
+}
+function ajustarClienteUI(i){
+  var cliente=window._cxcClientes[i];
+  var montoTxt=prompt('Ajuste de saldo de "'+cliente+'"\n\nMonto (negativo = reduce lo que debe, positivo = suma deuda):');
+  if(montoTxt===null) return;
+  var monto=Number(montoTxt);
+  if(!monto){ alert('Ingresá un monto distinto de 0.'); return; }
+  var motivo=prompt('Motivo del ajuste (obligatorio):');
+  if(motivo===null) return;
+  if(!motivo.trim()){ alert('El motivo es obligatorio.'); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgCxc', r.mensaje, r.ok);
+      if(r.ok){ delete cobrosCache[cliente]; cargarCXC(); }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgCxc','Error: '+e.message,false); })
+    .ajustarSaldoCliente('', cliente, monto, motivo, TOKEN);
+}
+
+// ── PROVEEDORES / CXP — mismo patrón que CXC de arriba ────────────
+var pagosCache={};
+function cargarProveedores(){
+  document.getElementById('provWrap').innerHTML='<div class="empty2">Cargando…</div>';
+  pagosCache={};
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ document.getElementById('provWrap').innerHTML='<div class="empty2">'+esc(r.mensaje)+'</div>'; return; }
+      var claves=Object.keys(r.cxp).filter(function(k){return r.cxp[k]>0;}).sort(function(a,b){return r.cxp[b]-r.cxp[a];});
+      if(!claves.length){ document.getElementById('provWrap').innerHTML='<div class="empty2">Sin saldos pendientes.</div>'; return; }
+      window._provNombres=claves;
+      window._provSaldos=r.cxp;
+      var h='';
+      claves.forEach(function(p,i){
+        h+='<div class="card" style="padding:11px 13px;margin-bottom:8px">'
+          +'<div class="kFila cxcRow" style="border-bottom:none;padding:0" onclick="toggleDetProv('+i+')">'
+          +'<span>'+esc(p)+'</span><span style="font-weight:700;color:var(--urgent)">$'+Math.round(r.cxp[p]).toLocaleString('es-AR')+'</span></div>'
+          +'<div id="provDet_'+i+'" class="cxcDet" style="display:none;margin-top:8px;padding-top:8px;border-top:1px dashed #eee"></div>'
+          +'</div>';
+      });
+      document.getElementById('provWrap').innerHTML=h;
+    })
+    .withFailureHandler(function(e){ document.getElementById('provWrap').textContent='Error: '+e.message; })
+    .getCXPParaVista(TOKEN);
+}
+function toggleDetProv(i){
+  var det=document.getElementById('provDet_'+i);
+  var abierto = det.style.display==='block';
+  document.querySelectorAll('[id^="provDet_"]').forEach(function(el){ el.style.display='none'; });
+  if(abierto) return;
+  det.style.display='block';
+  var prov=window._provNombres[i];
+  if(pagosCache[prov]){ renderPagosDet(det, pagosCache[prov], i); return; }
+  det.innerHTML='Cargando últimos pagos…';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ det.innerHTML='<span style="color:var(--urgent)">'+esc(r.mensaje)+'</span>'; return; }
+      pagosCache[prov]=r.pagos;
+      renderPagosDet(det, r.pagos, i);
+    })
+    .withFailureHandler(function(e){ det.textContent='Error: '+e.message; })
+    .getUltimosPagosProveedor(prov, TOKEN);
+}
+function renderPagosDet(det, pagos, i){
+  var prov = window._provNombres[i];
+  var saldo = (window._provSaldos && window._provSaldos[prov]) || 0;
+  var h = pagos.length
+    ? '<div style="font-weight:700;color:#5a6580;margin-bottom:5px">Últimos '+pagos.length+' pago(s)</div>'
+      + pagos.map(function(p){ return '<div class="linea"><span>'+esc(p.fecha)+' · '+esc(p.formaPago||'—')+'</span><span>$'+Math.round(p.monto).toLocaleString('es-AR')+'</span></div>'; }).join('')
+    : '<span style="color:#888">Sin pagos registrados para este proveedor.</span>';
+  if(saldo>0){
+    h += '<div class="ctaRow">'
+      + '<input type="number" id="provMonto_'+i+'" value="'+Math.round(saldo)+'" min="0">'
+      + '<select id="provForma_'+i+'"><option value="Transferencia">Transferencia</option><option value="Efectivo">Efectivo</option><option value="Cheque">Cheque</option></select>'
+      + '<button style="background:var(--warn)" onclick="pagarProveedorUI('+i+')">💵 Pagar</button>'
+      + '</div>';
+  }
+  if(ROL==='cfo'){
+    h += '<div class="btns" style="margin-top:8px"><button class="b2" onclick="ajustarProveedorUI('+i+')">🔒 Ajustar saldo</button></div>';
+  } else {
+    h += '<div class="lockNote">🔒 Ajustar saldo — reservado al CFO</div>';
+  }
+  det.innerHTML = h;
+}
+function pagarProveedorUI(i){
+  var prov=window._provNombres[i];
+  var monto=Number(document.getElementById('provMonto_'+i).value);
+  var forma=document.getElementById('provForma_'+i).value;
+  if(!monto || monto<=0){ showMsg('msgProveedores','Ingresá un monto válido.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgProveedores', r.mensaje, r.ok);
+      if(r.ok){ delete pagosCache[prov]; cargarProveedores(); }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgProveedores','Error: '+e.message,false); })
+    .pagarProveedorSaldo(prov, monto, forma, '', '', TOKEN, '');
+}
+function ajustarProveedorUI(i){
+  var prov=window._provNombres[i];
+  var montoTxt=prompt('Ajuste de saldo de "'+prov+'"\n\nMonto (negativo = reduce la deuda, positivo = suma deuda):');
+  if(montoTxt===null) return;
+  var monto=Number(montoTxt);
+  if(!monto){ alert('Ingresá un monto distinto de 0.'); return; }
+  var motivo=prompt('Motivo del ajuste (obligatorio):');
+  if(motivo===null) return;
+  if(!motivo.trim()){ alert('El motivo es obligatorio.'); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgProveedores', r.mensaje, r.ok);
+      if(r.ok){ delete pagosCache[prov]; cargarProveedores(); }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgProveedores','Error: '+e.message,false); })
+    .ajustarSaldoProveedor(prov, monto, motivo, TOKEN, '', '');
+}
+
+// ── GASTOS — registro directo (no ligado a una compra de insumos) ──
+var TAXONOMIA_GASTOS_MAP={}, gastoCondicion='Contado';
+function cargarTaxonomiaGastos(){
+  google.script.run.withSuccessHandler(function(r){
+    if(!r.ok) return;
+    TAXONOMIA_GASTOS_MAP=r.subMap;
+    var sel=document.getElementById('gasGrupoSel');
+    sel.innerHTML = r.grupos.map(function(g){return '<option value="'+esc(g)+'">'+esc(g)+'</option>';}).join('');
+    onGasGrupoChange();
+    elegirCondicionGasto('Contado');
+  }).getTaxonomiaGastos();
+}
+function onGasGrupoChange(){
+  var g=v('gasGrupoSel');
+  var subs=TAXONOMIA_GASTOS_MAP[g]||[];
+  var sel=document.getElementById('gasSubSel');
+  sel.innerHTML = subs.map(function(s){return '<option value="'+esc(s.sub)+'" data-hint="'+esc(s.hint||'')+'">'+esc(s.sub)+'</option>';}).join('');
+  onGasSubChange();
+}
+function onGasSubChange(){
+  var sel=document.getElementById('gasSubSel');
+  var opt=sel.options[sel.selectedIndex];
+  document.getElementById('gasSubHint').textContent = opt ? (opt.getAttribute('data-hint')||'') : '';
+}
+function elegirCondicionGasto(val){
+  gastoCondicion=val;
+  document.getElementById('gasCondChip_Contado').classList.toggle('on', val==='Contado');
+  document.getElementById('gasCondChip_Cuenta').classList.toggle('on', val==='Cuenta corriente');
+  document.getElementById('gasDiasWrap').style.display = (val==='Cuenta corriente') ? 'block' : 'none';
+}
+function registrarGastoUI(){
+  var grupo=v('gasGrupoSel'), sub=v('gasSubSel'), monto=Number(v('gasMontoInp'));
+  if(!grupo||!sub){ showMsg('msgGastos','Elegí grupo y subgrupo.',false); return; }
+  if(!monto||monto<=0){ showMsg('msgGastos','Ingresá un monto válido.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgGastos', r.mensaje, r.ok);
+      if(r.ok){
+        document.getElementById('gasMontoInp').value='';
+        document.getElementById('gasDescInp').value='';
+        document.getElementById('gasObsInp').value='';
+      }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgGastos','Error: '+e.message,false); })
+    .registrarGastoOperativo(grupo, sub, v('gasDescInp'), v('gasProvSel'), monto, gastoCondicion, Number(v('gasDiasInp'))||0, v('gasObsInp'), TOKEN, v('gasCajaSel'));
+}
+
+// ── Proveedores de referencia — alimenta el selector de Gastos y el
+//    datalist de proveedor en Compras. getProveedores() (Configuracion.gs)
+//    es de solo lectura y ya se llama sin token desde otras pantallas del
+//    sistema (mismo criterio que getClientes()) ──────────────────────
+var PROVEEDORES_LISTA=[];
+function poblarProveedoresGastos(){
+  google.script.run.withSuccessHandler(function(provs){
+    PROVEEDORES_LISTA=provs||[];
+    var sel=document.getElementById('gasProvSel');
+    if(sel) sel.innerHTML='<option value="">— Sin proveedor / genérico —</option>' + PROVEEDORES_LISTA.map(function(p){return '<option value="'+esc(p.nombre)+'">'+esc(p.nombre)+'</option>';}).join('');
+    var dl=document.getElementById('provsSugeridos');
+    if(dl) dl.innerHTML = PROVEEDORES_LISTA.map(function(p){return '<option value="'+esc(p.nombre)+'">';}).join('');
+  }).getProveedores();
+}
+
+// ── COMPRAS / INSUMOS ──────────────────────────────────────────────
+var comCondicion='Contado', carritoCompra=[], INSUMOS_LISTA=[];
+function setComprasSub(sub){
+  document.getElementById('comSub_comprar').classList.toggle('on', sub==='comprar');
+  document.getElementById('comSub_recetas').classList.toggle('on', sub==='recetas');
+  document.getElementById('comprasVistaComprar').style.display = sub==='comprar' ? 'block' : 'none';
+  document.getElementById('comprasVistaRecetas').style.display = sub==='recetas' ? 'block' : 'none';
+  if(sub==='recetas') cargarProductosTerminados();
+}
+function elegirCondicionCompra(val){
+  comCondicion=val;
+  document.getElementById('comCondChip_Contado').classList.toggle('on', val==='Contado');
+  document.getElementById('comCondChip_Cuenta').classList.toggle('on', val==='Cuenta corriente');
+  document.getElementById('comDiasWrap').style.display = (val==='Cuenta corriente') ? 'block' : 'none';
+}
+function cargarInsumos(){
+  google.script.run.withSuccessHandler(function(r){
+    if(!r.ok) return;
+    INSUMOS_LISTA=r.insumos||[];
+    var sel=document.getElementById('comInsumoSel');
+    if(sel) sel.innerHTML='<option value="">— Seleccioná —</option>' + INSUMOS_LISTA.map(function(it){return '<option value="'+esc(it.sku)+'">'+esc(it.nombre)+' ('+esc(it.familia)+')</option>';}).join('');
+    renderInsumosList();
+    var familias=[]; INSUMOS_LISTA.forEach(function(it){ if(it.familia && familias.indexOf(it.familia)===-1) familias.push(it.familia); });
+    ['familiasSugeridas','familiasSugeridas2'].forEach(function(id){
+      var dl=document.getElementById(id);
+      if(dl) dl.innerHTML = familias.map(function(f){return '<option value="'+esc(f)+'">';}).join('');
+    });
+  }).getCatalogoInsumos(TOKEN);
+}
+function renderInsumosList(){
+  var w=document.getElementById('insumosListWrap');
+  if(!w) return;
+  if(!INSUMOS_LISTA.length){ w.innerHTML='<div class="empty2">Todavía no hay insumos cargados.</div>'; return; }
+  w.innerHTML = INSUMOS_LISTA.map(function(it){
+    return '<div class="kFila"><span>'+esc(it.nombre)+' <span style="color:#888;font-size:10.5px">('+esc(it.familia)+')</span></span><span>'+esc(it.stock)+' '+esc(it.unidad)+'</span></div>';
+  }).join('');
+}
+function agregarLineaCompra(){
+  var sku=v('comInsumoSel'), cantidad=Number(v('comCantidadInp')), precio=Number(v('comPrecioInp'));
+  if(!v('comProveedorInp').trim()){ showMsg('msgCompras','Ingresá el proveedor.',false); return; }
+  if(!sku){ showMsg('msgCompras','Elegí un insumo.',false); return; }
+  if(!(cantidad>0)||!(precio>0)||!isFinite(cantidad)||!isFinite(precio)){ showMsg('msgCompras','Completá cantidad y precio (números mayores que 0).',false); return; }
+  var it=INSUMOS_LISTA.filter(function(x){return x.sku===sku;})[0];
+  carritoCompra.push({sku:sku, nombre:it?it.nombre:sku, unidad:it?it.unidad:'', cantidad:cantidad, precioUnitario:precio});
+  document.getElementById('comCantidadInp').value='';
+  document.getElementById('comPrecioInp').value='';
+  renderCarritoCompra();
+}
+function quitarLineaCompra(i){ carritoCompra.splice(i,1); renderCarritoCompra(); }
+function renderCarritoCompra(){
+  var w=document.getElementById('comCarritoWrap');
+  if(!carritoCompra.length){ w.innerHTML='<div class="empty2">Todavía no agregaste insumos.</div>'; return; }
+  var h='';
+  carritoCompra.forEach(function(it,i){
+    h+='<div class="cartLine"><div class="fl"><b>'+esc(it.nombre)+'</b><br>'
+      +esc(it.cantidad)+' '+esc(it.unidad)+' × $'+it.precioUnitario.toLocaleString('es-AR')+' = $'+(it.cantidad*it.precioUnitario).toLocaleString('es-AR')+'</div>'
+      +'<button onclick="quitarLineaCompra('+i+')">✕</button></div>';
   });
-  det.innerHTML=h;
+  w.innerHTML=h;
+}
+function cerrarCompraUI(){
+  var prov=v('comProveedorInp').trim();
+  if(!prov){ showMsg('msgCompras','Ingresá el proveedor.',false); return; }
+  if(!carritoCompra.length){ showMsg('msgCompras','Agregá al menos un insumo.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgCompras', r.mensaje, r.ok);
+      if(r.ok){ carritoCompra=[]; renderCarritoCompra(); cargarInsumos(); }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgCompras','Error: '+e.message,false); })
+    .registrarCompraItemizada(prov, comCondicion, Number(v('comDiasInp'))||0,
+      carritoCompra.map(function(it){return {sku:it.sku, cantidad:it.cantidad, unidad:it.unidad, precioUnitario:it.precioUnitario};}),
+      '', TOKEN, '');
+}
+function toggleNuevoInsumo(){
+  var w=document.getElementById('nuevoInsumoWrap');
+  w.style.display = (w.style.display==='none'||!w.style.display) ? 'block' : 'none';
+}
+function crearInsumoUI(){
+  var nombre=v('insNombreInp').trim(), familia=v('insFamiliaInp').trim(), unidad=v('insUnidadInp').trim()||'kg';
+  if(!nombre||!familia){ showMsg('msgCompras','Completá nombre y familia.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgCompras', r.mensaje, r.ok);
+      if(r.ok){
+        document.getElementById('insNombreInp').value='';
+        document.getElementById('insFamiliaInp').value='';
+        cargarInsumos();
+      }
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgCompras','Error: '+e.message,false); })
+    .crearInsumoNuevo(nombre, familia, unidad, TOKEN);
+}
+
+// ── RECETAS ─────────────────────────────────────────────────────────
+var recProducto=null, recLineas=[];
+function cargarProductosTerminados(){
+  google.script.run.withSuccessHandler(function(r){
+    if(!r.ok) return;
+    var sel=document.getElementById('recProductoSel');
+    sel.innerHTML='<option value="">— Seleccioná —</option>' + (r.productos||[]).map(function(p){return '<option value="'+esc(p.sku)+'">'+esc(p.nombre)+'</option>';}).join('');
+  }).getCatalogoTerminados(TOKEN);
+}
+function cargarRecetaDeProductoUI(){
+  recProducto=v('recProductoSel');
+  recLineas=[];
+  document.getElementById('recCostoWrap').innerHTML='';
+  renderRecLineas();
+  if(!recProducto) return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(r.ok){ recLineas=r.lineas||[]; renderRecLineas(); if(recLineas.length) verCostoRecetaUI(); }
+    })
+    .getRecetaDeProducto(recProducto, TOKEN);
+}
+function renderRecLineas(){
+  var w=document.getElementById('recLineasWrap');
+  if(!recProducto){ w.innerHTML='<div class="empty2">Elegí un producto.</div>'; return; }
+  if(!recLineas.length){ w.innerHTML='<div class="empty2">Todavía no tiene receta cargada.</div>'; return; }
+  w.innerHTML = recLineas.map(function(li,i){
+    return '<div class="cartLine"><div class="fl"><b>'+esc(li.familia)+'</b><br>'+esc(li.cantidadPorUnidad)+' '+esc(li.unidad||'')+' por unidad</div>'
+      +'<button onclick="quitarLineaReceta('+i+')">✕</button></div>';
+  }).join('');
+}
+function quitarLineaReceta(i){ recLineas.splice(i,1); renderRecLineas(); }
+function agregarLineaReceta(){
+  if(!recProducto){ showMsg('msgCompras','Elegí primero el producto.',false); return; }
+  var familia=v('recFamiliaInp').trim(), cantidad=Number(v('recCantidadInp')), unidad=v('recUnidadInp').trim()||'kg';
+  if(!familia||!cantidad){ showMsg('msgCompras','Completá familia y cantidad.',false); return; }
+  recLineas.push({familia:familia, cantidadPorUnidad:cantidad, unidad:unidad, obs:''});
+  document.getElementById('recFamiliaInp').value='';
+  document.getElementById('recCantidadInp').value='';
+  renderRecLineas();
+}
+function guardarRecetaUI(){
+  if(!recProducto){ showMsg('msgCompras','Elegí primero el producto.',false); return; }
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){
+      sp(false); showMsg('msgCompras', r.mensaje, r.ok);
+      if(r.ok) verCostoRecetaUI();
+    })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgCompras','Error: '+e.message,false); })
+    .guardarReceta(recProducto, recLineas, TOKEN);
+}
+function verCostoRecetaUI(){
+  if(!recProducto) return;
+  google.script.run
+    .withSuccessHandler(function(r){
+      var w=document.getElementById('recCostoWrap');
+      if(!r.ok){ w.innerHTML=''; return; }
+      w.innerHTML='<div class="card" style="padding:11px 13px">'+esc(r.mensaje)+'</div>';
+    })
+    .calcularCostoReceta(recProducto, TOKEN);
+}
+
+// ── CONSULTAS ("reemplazo del Excel") ──────────────────────────────
+var consRegistros=[];
+function onConsModuloChange(){
+  document.getElementById('consGrupoSel').style.display = (v('consModuloSel')==='gastos') ? 'block' : 'none';
+  poblarConsEntidad();
+  aplicarFiltrosConsultas();
+}
+function poblarConsEntidad(){
+  var modulo=v('consModuloSel');
+  var sel=document.getElementById('consEntidadSel');
+  var lista = (modulo==='pedidos'||modulo==='cobros') ? CLIENTES.map(function(c){return c.nombre;}) : PROVEEDORES_LISTA.map(function(p){return p.nombre;});
+  sel.innerHTML='<option value="">Todos</option>' + lista.map(function(n){return '<option value="'+esc(n)+'">'+esc(n)+'</option>';}).join('');
+  var gsel=document.getElementById('consGrupoSel');
+  gsel.style.display = (modulo==='gastos') ? 'block' : 'none';
+  if(modulo==='gastos'){
+    var grupos=Object.keys(TAXONOMIA_GASTOS_MAP);
+    gsel.innerHTML='<option value="">Todos los grupos</option>' + grupos.map(function(g){return '<option value="'+esc(g)+'">'+esc(g)+'</option>';}).join('');
+  }
+}
+function aplicarFiltrosConsultas(){
+  var modulo=v('consModuloSel'), periodo=Number(v('consPeriodoSel')), entidad=v('consEntidadSel');
+  var grupo=(modulo==='gastos')?v('consGrupoSel'):'', busqueda=v('consBuscarInp');
+  document.getElementById('consResultsWrap').innerHTML='<div class="empty2">Cargando…</div>';
+  google.script.run
+    .withSuccessHandler(function(r){
+      if(!r.ok){ document.getElementById('consResultsWrap').innerHTML='<div class="empty2">'+esc(r.mensaje)+'</div>'; return; }
+      consRegistros=r.registros;
+      renderConsResumen(r.resumen);
+      renderConsResultados(r.registros);
+    })
+    .withFailureHandler(function(e){ document.getElementById('consResultsWrap').textContent='Error: '+e.message; })
+    .getConsultas(modulo, periodo, entidad, grupo, busqueda, TOKEN);
+}
+function renderConsResumen(resumen){
+  document.getElementById('consResumenWrap').innerHTML =
+    '<div class="box"><div class="l">Movimientos</div><div class="v">'+esc(resumen.movimientos)+'</div></div>'
+    +'<div class="box"><div class="l">Total</div><div class="v">$'+Math.round(resumen.total).toLocaleString('es-AR')+'</div></div>'
+    +'<div class="box"><div class="l">Promedio</div><div class="v">$'+Math.round(resumen.promedio).toLocaleString('es-AR')+'</div></div>';
+}
+function renderConsResultados(regs){
+  var w=document.getElementById('consResultsWrap');
+  if(!regs.length){ w.innerHTML='<div class="empty2">Sin movimientos para este filtro.</div>'; return; }
+  w.innerHTML = regs.map(function(r){
+    return '<div class="linea"><span>'+esc(r.fecha)+' · '+esc(r.entidad)+'<br><span style="font-size:10.5px;color:#888">'+esc(r.texto)+(r.meta?' — '+esc(r.meta):'')+'</span></span><span>$'+Math.round(r.monto).toLocaleString('es-AR')+'</span></div>';
+  }).join('');
+}
+function csvEscapeF(v){
+  v=(v===null||v===undefined)?'':String(v);
+  // Un texto que empieza con = + - @ se abre como FÓRMULA en Excel/Sheets: se le antepone ' (los números, como "-5", no se tocan).
+  if(/^[=+\-@\t\r]/.test(v) && isNaN(Number(v))) v="'"+v;
+  if(/[";\n]/.test(v)) v='"'+v.replace(/"/g,'""')+'"';
+  return v;
+}
+// Exporta EXACTAMENTE lo que se está mirando (mismos filtros que
+// aplicarFiltrosConsultas ya aplicó del lado del servidor). Se genera el
+// .csv en el propio navegador con un Blob — a diferencia del mockup, NO
+// usa window.claude.use('downloads') (eso es específico de la vista
+// previa de Claude y no existe en una Web App de Apps Script real).
+function exportarConsultasCSV(){
+  if(!consRegistros.length){ showMsg('msgConsultas','No hay movimientos para exportar con estos filtros.',false); return; }
+  var modulo=v('consModuloSel');
+  var entidadLbl=(modulo==='pedidos'||modulo==='cobros')?'Cliente':'Proveedor';
+  var esGastos=(modulo==='gastos');
+  var headers=['Fecha', entidadLbl, 'Descripción', 'Detalle', 'Monto'];
+  if(esGastos) headers.push('Grupo');
+  var filas=consRegistros.map(function(r){
+    var fila=[r.fecha, r.entidad, r.texto, r.meta||'', r.monto];
+    if(esGastos) fila.push(r.grupo||'');
+    return fila;
+  });
+  var total=consRegistros.reduce(function(s,r){return s+r.monto;},0);
+  var filaTotal=['','','','TOTAL',total];
+  if(esGastos) filaTotal.push('');
+  var lineas=[headers].concat(filas).concat([filaTotal]).map(function(f){return f.map(csvEscapeF).join(';');});
+  var csv='﻿'+lineas.join('\r\n');
+  var blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement('a');
+  a.href=url; a.download='ananai-'+modulo+'-'+consRegistros.length+'mov.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(function(){URL.revokeObjectURL(url);}, 2000);
 }
 
 // ── CONFIG PINES (solo CFO) ────────────────────────────────────────
@@ -862,7 +1688,7 @@ function guardarPinRol(rol){
 //    así que se usa este en su lugar) ──────────────────────────────
 function showMsg(id,txt,ok){
   var el=document.getElementById(id); if(!el) return;
-  el.innerHTML=(ok?'✅ ':'⚠️ ')+txt; el.className='msg '+(ok?'ok':'er'); el.style.display='block';
+  el.textContent=(ok?'✅ ':'⚠️ ')+txt; el.className='msg '+(ok?'ok':'er'); el.style.display='block';
   if(ok) setTimeout(function(){el.style.display='none';},5000);
 }
 </script>

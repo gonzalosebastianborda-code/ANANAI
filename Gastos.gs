@@ -1,5 +1,4 @@
-// Gastos.gs 
-//═══════════════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════════════
 // AÑAÑAI · Gastos.gs
 // Módulo de Gastos: hojas, formularios, migración histórica
 // ═══════════════════════════════════════════════════════════════
@@ -173,6 +172,7 @@ function importarHistoricosGastos() {
 // ════════════════════════════════════════════════════════════════
 function guardarGasto(datos) {
   try {
+    datos = _sanObj_(datos); // neutraliza "=..." en grupo/descripción/proveedor/obs (ver _sanTxt_ en Produccion.gs)
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_GASTOS);
     var fila = Math.max(hoja.getLastRow() + 1, GASTOS_START);
@@ -213,6 +213,7 @@ function guardarGasto(datos) {
 // ════════════════════════════════════════════════════════════════
 function guardarPagoProveedor(datos) {
   try {
+    datos = _sanObj_(datos); // neutraliza "=..." en proveedor/forma de pago/obs (ver _sanTxt_ en Produccion.gs)
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_PAGOS_PR);
     var fila = Math.max(hoja.getLastRow() + 1, PAGOS_START);
@@ -317,6 +318,7 @@ function confirmarDebitoCheque(pagId) {
 // ════════════════════════════════════════════════════════════════
 function guardarProveedorNuevo(datos) {
   try {
+    datos = _sanObj_(datos); // neutraliza "=..." en el nombre (ver _sanTxt_ en Produccion.gs)
     var ss   = SpreadsheetApp.getActiveSpreadsheet();
     var hoja = ss.getSheetByName(H_PROVEED);
     var last = hoja.getLastRow();

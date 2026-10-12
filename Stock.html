@@ -1,4 +1,3 @@
-//Stock.html
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -192,6 +191,13 @@ var TAB = 'todos';
 
 document.getElementById('dashLink').href = '<?= dashboardUrl ?>';
 
+// ── Seguridad: todo texto que viene de la planilla (nombres, motivos, usuarios, SKU...)
+// y entra a un innerHTML pasa por esc(). Un nombre como <img onerror=...> se ve como
+// texto en vez de ejecutarse en el navegador de quien mira el Stock.
+function esc(s){
+  return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 function norm(s){
   return String(s==null?'':s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
@@ -255,9 +261,9 @@ function tarjetaProducto(p){
   div.className='pcard estado-'+est;
   div.onclick=function(){ abrirDetalle(p.sku); };
   div.innerHTML=
-    '<div class="pc-top"><div class="pc-name">'+p.nombre+'</div><span class="chip">'+p.categoria+'</span></div>'+
-    '<div class="pc-stock">'+p.stock+' <span class="pc-unit">'+(p.unidad||'u.')+'</span></div>'+
-    '<div class="pc-meta"><span>'+p.sku+'</span><span>'+haceTiempo(p.actualizado)+'</span></div>';
+    '<div class="pc-top"><div class="pc-name">'+esc(p.nombre)+'</div><span class="chip">'+esc(p.categoria)+'</span></div>'+
+    '<div class="pc-stock">'+esc(p.stock)+' <span class="pc-unit">'+esc(p.unidad||'u.')+'</span></div>'+
+    '<div class="pc-meta"><span>'+esc(p.sku)+'</span><span>'+esc(haceTiempo(p.actualizado))+'</span></div>';
   return div;
 }
 
@@ -284,8 +290,8 @@ function render(){
     var row=document.createElement('div');
     row.className='alert-row'+(resuelta?' resuelta':'');
     row.innerHTML=
-      '<div><div class="alert-title">'+a.desId+' — '+a.producto+(a.variante?' · '+a.variante:'')+' · '+a.cantidad+' u.</div>'+
-      '<div class="alert-sub">Stock al momento: '+a.stockAlMomento+' · Motivo: "'+a.motivo+'" · '+a.usuario+' · '+fmtFecha(a.f)+'</div></div>';
+      '<div><div class="alert-title">'+esc(a.desId)+' — '+esc(a.producto)+(a.variante?' · '+esc(a.variante):'')+' · '+esc(a.cantidad)+' u.</div>'+
+      '<div class="alert-sub">Stock al momento: '+esc(a.stockAlMomento)+' · Motivo: "'+esc(a.motivo)+'" · '+esc(a.usuario)+' · '+esc(fmtFecha(a.f))+'</div></div>';
     if(resuelta){
       var tag=document.createElement('span'); tag.className='tag-resuelto'; tag.textContent='✓ Revisado';
       row.appendChild(tag);
@@ -343,7 +349,7 @@ function abrirDetalle(sku){
     }
   }
   var stats='<div class="stat-row">'+statsItems.map(function(s){
-    return '<div class="stat"><div class="stat-l">'+s.l+'</div><div class="stat-v">'+s.v+'</div></div>';
+    return '<div class="stat"><div class="stat-l">'+esc(s.l)+'</div><div class="stat-v">'+esc(s.v)+'</div></div>';
   }).join('')+'</div>';
   var hist='<div class="ct" style="margin-top:0">Historial de movimientos</div>';
   if(!movs.length){
@@ -354,15 +360,15 @@ function abrirDetalle(sku){
       var claseTipo=esAlerta?'alerta':(m.tipo==='Producción'?'prod':'desp');
       var signo=m.cantidad>0?'+':'';
       hist+='<div class="mov-row">'+
-        '<div><span class="mov-tipo '+claseTipo+'">'+m.tipo+'</span>'+
-        '<div class="mov-detalle">'+fmtFecha(m.f)+' · '+m.usuario+(m.detalle?' · '+m.detalle:'')+'</div></div>'+
-        '<div class="mov-cant '+(m.cantidad>=0?'pos':'neg')+'">'+signo+m.cantidad+'</div>'+
+        '<div><span class="mov-tipo '+claseTipo+'">'+esc(m.tipo)+'</span>'+
+        '<div class="mov-detalle">'+esc(fmtFecha(m.f))+' · '+esc(m.usuario)+(m.detalle?' · '+esc(m.detalle):'')+'</div></div>'+
+        '<div class="mov-cant '+(m.cantidad>=0?'pos':'neg')+'">'+esc(signo+m.cantidad)+'</div>'+
         '</div>';
     });
   }
   document.getElementById('modal').innerHTML=
-    '<div class="modal-hdr"><div><div class="modal-title">'+p.nombre+'</div>'+
-    '<div class="modal-sub">'+p.sku+' · '+p.categoria+'</div></div>'+
+    '<div class="modal-hdr"><div><div class="modal-title">'+esc(p.nombre)+'</div>'+
+    '<div class="modal-sub">'+esc(p.sku)+' · '+esc(p.categoria)+'</div></div>'+
     '<button class="modal-close" onclick="cerrarDetalle()">✕</button></div>'+
     stats+hist;
   document.getElementById('modalOverlay').classList.add('show');
@@ -415,8 +421,8 @@ function renderCorrecciones(){
     row.className = 'alert-row' + (anulado ? ' resuelta' : '');
     var signo = m.cantidad >= 0 ? '+' : '';
     row.innerHTML =
-      '<div><div class="alert-title">'+m.tipo+' · '+m.producto+' ('+m.sku+') · '+signo+m.cantidad+'</div>'+
-      '<div class="alert-sub">'+fmtFecha(m.f)+' · '+m.usuario+(m.detalle ? ' · '+m.detalle : '')+'</div></div>';
+      '<div><div class="alert-title">'+esc(m.tipo)+' · '+esc(m.producto)+' ('+esc(m.sku)+') · '+esc(signo+m.cantidad)+'</div>'+
+      '<div class="alert-sub">'+esc(fmtFecha(m.f))+' · '+esc(m.usuario)+(m.detalle ? ' · '+esc(m.detalle) : '')+'</div></div>';
     if (anulado){
       var tag = document.createElement('span'); tag.className = 'tag-resuelto'; tag.textContent = '✓ Anulado';
       row.appendChild(tag);
@@ -462,11 +468,11 @@ function renderAuditoria(){
     var row = document.createElement('div');
     row.className = 'pcard';
     row.innerHTML =
-      '<div class="pc-top"><div class="pc-name">'+p.nombre+'</div><span class="chip">'+p.sku+'</span></div>'+
-      '<div style="font-size:11px;color:var(--steel);margin-bottom:6px">Sistema: <b style="color:var(--ink)">'+p.stock+' '+(p.unidad||'')+'</b></div>'+
-      '<input type="number" placeholder="Conteo real" data-sku="'+p.sku+'" data-sistema="'+p.stock+'" oninput="actualizarDelta(this)" '+
+      '<div class="pc-top"><div class="pc-name">'+esc(p.nombre)+'</div><span class="chip">'+esc(p.sku)+'</span></div>'+
+      '<div style="font-size:11px;color:var(--steel);margin-bottom:6px">Sistema: <b style="color:var(--ink)">'+esc(p.stock)+' '+esc(p.unidad||'')+'</b></div>'+
+      '<input type="number" placeholder="Conteo real" data-sku="'+esc(p.sku)+'" data-sistema="'+esc(p.stock)+'" oninput="actualizarDelta(this)" '+
       'style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:8px;font-family:var(--font-mono);font-size:14px;margin-bottom:6px">'+
-      '<div id="delta-'+p.sku+'" style="font-size:11.5px;font-weight:600;min-height:14px"></div>';
+      '<div id="delta-'+esc(p.sku)+'" style="font-size:11.5px;font-weight:600;min-height:14px"></div>';
     lista.appendChild(row);
   });
 }

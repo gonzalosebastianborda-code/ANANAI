@@ -1,4 +1,3 @@
-//Configuracion.gs
 // ═══════════════════════════════════════════════════════════════
 // AÑAÑAI · Configuracion.gs
 // Constantes globales, CMV y taxonomía de gastos
@@ -411,7 +410,7 @@ function guardarMetasProduccion(items, pin) {
   var ws = ensureHojaMetasProduccion_();
   var last = ws.getLastRow();
   if (last >= DATA_ROW) ws.getRange(DATA_ROW, 1, last - DATA_ROW + 1, 3).clearContent();
-  var filas = (items || []).map(function(it) { return [it.sku, it.nombre, Number(it.meta) || 0]; });
+  var filas = (items || []).map(function(it) { return [_sanTxt_(it.sku), _sanTxt_(it.nombre), Number(it.meta) || 0]; });
   if (filas.length) ws.getRange(DATA_ROW, 1, filas.length, 3).setValues(filas);
   _metasProduccionCache_ = null;
   return { ok: true, mensaje: filas.length + ' meta(s) guardada(s).' };
@@ -601,7 +600,9 @@ function guardarPlanSemanal(semana, items, pin) {
   // Borro solo las filas de ESA semana (no toco otras semanas ya cargadas)
   if (last >= DATA_ROW) {
     var actuales = ws.getRange(DATA_ROW, 1, last - DATA_ROW + 1, ENCABEZADOS_PLAN_SEMANAL.length).getValues();
-    var conservar = actuales.filter(function(r) { return String(r[0]).trim() !== semana && r[0]; });
+    // _sanTxt_: las celdas se leen sin el apóstrofe de protección; al reescribirlas hay que volver a protegerlas
+    var conservar = actuales.filter(function(r) { return String(r[0]).trim() !== semana && r[0]; })
+      .map(function(r) { return r.map(function(v) { return _sanTxt_(v); }); });
     ws.getRange(DATA_ROW, 1, last - DATA_ROW + 1, ENCABEZADOS_PLAN_SEMANAL.length).clearContent();
     if (conservar.length) ws.getRange(DATA_ROW, 1, conservar.length, ENCABEZADOS_PLAN_SEMANAL.length).setValues(conservar);
     last = DATA_ROW + conservar.length - 1;
@@ -609,7 +610,7 @@ function guardarPlanSemanal(semana, items, pin) {
   var filaLibre = Math.max(DATA_ROW, last + 1);
   var nuevas = (items || []).map(function(it) {
     var d = it.dias || [0, 0, 0, 0, 0, 0, 0];
-    return [semana, it.sku, it.nombre, d[0] || 0, d[1] || 0, d[2] || 0, d[3] || 0, d[4] || 0, d[5] || 0, d[6] || 0];
+    return [_sanTxt_(semana), _sanTxt_(it.sku), _sanTxt_(it.nombre), _sanTxt_(d[0]) || 0, _sanTxt_(d[1]) || 0, _sanTxt_(d[2]) || 0, _sanTxt_(d[3]) || 0, _sanTxt_(d[4]) || 0, _sanTxt_(d[5]) || 0, _sanTxt_(d[6]) || 0];
   });
   if (nuevas.length) ws.getRange(filaLibre, 1, nuevas.length, ENCABEZADOS_PLAN_SEMANAL.length).setValues(nuevas);
   return { ok: true, mensaje: nuevas.length + ' producto(s) planificado(s) para la semana del ' + semana + '.' };
@@ -640,7 +641,7 @@ function guardarCVUConfig(items, pin) {
   }
   var last = hoja.getLastRow();
   if (last >= 4) hoja.getRange(4, 1, last - 3, 4).clearContent();
-  var filas = (items || []).map(function(it) { return [it.nombre, it.variante || '', Number(it.cvu) || 0, it.desc || '']; });
+  var filas = (items || []).map(function(it) { return [_sanTxt_(it.nombre), _sanTxt_(it.variante || ''), Number(it.cvu) || 0, _sanTxt_(it.desc || '')]; });
   if (filas.length) hoja.getRange(4, 1, filas.length, 4).setValues(filas);
   return { ok: true, mensaje: filas.length + ' línea(s) de CVU guardada(s).' };
 }
