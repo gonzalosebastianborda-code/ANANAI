@@ -1,3 +1,4 @@
+// Icons.gs
 // Icono de Producción (letra "P" sobre fondo verde) — mismo ícono que usaba
 // ~/Produccion/Icons.js original de Borda, reusado tal cual acá porque
 // Apps Script no puede servir archivos binarios sueltos desde doGet: el

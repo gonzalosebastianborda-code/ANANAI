@@ -1,3 +1,4 @@
+//Configuracion.gs
 // ═══════════════════════════════════════════════════════════════
 // AÑAÑAI · Configuracion.gs
 // Constantes globales, CMV y taxonomía de gastos

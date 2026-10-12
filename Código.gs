@@ -610,6 +610,162 @@ function getCXC() {
   return cxc;
 }
 
+// ═══ INICIO · ALERTA DIARIA DE COBRANZAS ═══════════════════════════
+// Mail diario cuando un cliente con saldo pendiente llega a ALERTA_DIAS días
+// sin registrar un cobro. No toca ninguna hoja: el "ya avisé" vive en las
+// propiedades del script (prefijo ALERTA_COB_). Reusa getCXC(), getClientes()
+// y _norm() de este archivo.
+// Activar: ejecutar probarCobranzas() y después instalarTriggerCobranzas() (una vez).
+var ALERTA_DIAS          = 15;    // días sin cobrar (con saldo) para disparar el aviso
+var ALERTA_REPETIR_CADA  = 7;     // re-avisar cada N días si sigue sin cobrar (0 = una sola vez)
+var ALERTA_SALDO_MIN     = 1000;  // ignora saldos chicos
+var ALERTA_HORA          = 8;     // hora de corrida (zona horaria del proyecto)
+var ALERTA_EXCLUIR       = ['Añañai'];  // clientes que no se alertan (sucursal interna)
+var ALERTA_DESTINATARIOS = 'gonzalosebastianborda@gmail.com,nicosdominguez23@gmail.com';
+var ALERTA_TZ            = 'America/Argentina/Buenos_Aires';
+var ALERTA_PREFIJO       = 'ALERTA_COB_';
+
+function _fAlerta_(d, fmt) { return Utilities.formatDate(d, ALERTA_TZ, fmt || 'yyyy-MM-dd'); }
+
+// Días corridos entre dos fechas 'yyyy-MM-dd' (sin depender de la hora del día).
+function _diasEntreAlerta_(desdeStr, hastaStr) {
+  var a = desdeStr.split('-'), b = hastaStr.split('-');
+  return Math.round((Date.UTC(+b[0], +b[1] - 1, +b[2]) - Date.UTC(+a[0], +a[1] - 1, +a[2])) / 864e5);
+}
+
+function _pesosAlerta_(n) { return '$' + String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+
+// Fecha del último cobro vigente y del primer despacho vigente por cliente → { claveNorm: Date }.
+// Mismo criterio que getCXC(): se cruza por nombre (los cobros migrados no tienen CLI-ID)
+// y se descartan cobros con "ANULADO" y despachos 'Anulado'.
+function _fechasAlerta_() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var ult = {}, prim = {};
+  var hCob = ss.getSheetByName(H_COBROS), hDes = ss.getSheetByName(H_DESPACHOS);
+  if (hCob && hCob.getLastRow() >= DATA_ROW) {
+    hCob.getRange(DATA_ROW, 1, hCob.getLastRow() - DATA_ROW + 1, 11).getValues().forEach(function(r) {
+      var cli = String(r[3]).trim(), neto = Number(r[6]) || Number(r[4]) || 0;
+      if (!cli || neto <= 0 || !(r[1] instanceof Date) || String(r[10] || '').indexOf('ANULADO') > -1) return;
+      var k = _norm(cli);
+      if (!ult[k] || r[1] > ult[k]) ult[k] = r[1];
+    });
+  }
+  if (hDes && hDes.getLastRow() >= DATA_ROW) {
+    hDes.getRange(DATA_ROW, 1, hDes.getLastRow() - DATA_ROW + 1, 13).getValues().forEach(function(r) {
+      var cli = String(r[3]).trim();
+      if (!cli || !(r[1] instanceof Date) || (Number(r[10]) || 0) <= 0 || String(r[12] || '').trim() === 'Anulado') return;
+      var k = _norm(cli);
+      if (!prim[k] || r[1] < prim[k]) prim[k] = r[1];
+    });
+  }
+  return { ult: ult, prim: prim };
+}
+
+// Clientes con saldo >= ALERTA_SALDO_MIN y al menos `dias` días desde su último cobro
+// (o desde su primer despacho, si nunca cobraron). Más pasados primero.
+function getCobranzasPasadas(dias) {
+  var hoyStr = _fAlerta_(new Date());
+  var cxc = getCXC(), f = _fechasAlerta_(), cred = {};
+  getClientes().forEach(function(c) { cred[_norm(c.nombre)] = c.diasCred; });
+  var excluir = ALERTA_EXCLUIR.map(_norm);
+  var out = [];
+  Object.keys(cxc).forEach(function(nombre) {
+    var k = _norm(nombre), saldo = cxc[nombre];
+    if (saldo < ALERTA_SALDO_MIN || excluir.indexOf(k) > -1) return;
+    var nunca = !f.ult[k], desde = nunca ? f.prim[k] : f.ult[k];
+    if (!desde) return;
+    var d = _diasEntreAlerta_(_fAlerta_(desde), hoyStr);
+    if (d >= dias) out.push({ clave: k, cliente: nombre, saldo: saldo, dias: d, desde: desde, nunca: nunca, diasCred: cred[k] });
+  });
+  return out.sort(function(a, b) { return b.dias - a.dias; });
+}
+
+function _enviarMailCobranzas_(lista, yaAvisados, esPrueba) {
+  var total = lista.reduce(function(s, c) { return s + c.saldo; }, 0);
+  var asunto = (esPrueba ? '[PRUEBA] ' : '') + '⏰ Cobranzas: ' + lista.length +
+               (lista.length === 1 ? ' cliente' : ' clientes') + ' con ' + ALERTA_DIAS + '+ días sin cobrar';
+  var pie = yaAvisados > 0 ? yaAvisados + ' cliente(s) más siguen pasados pero ya fueron avisados en los últimos ' +
+            (ALERTA_REPETIR_CADA || '∞') + ' días.' : '';
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function td(txt, der) { return '<td style="padding:6px 10px;border-bottom:1px solid #ddd' + (der ? ';text-align:right' : '') + '">' + txt + '</td>'; }
+  function th(txt, der) { return '<th style="padding:6px 10px;text-align:' + (der ? 'right' : 'left') + '">' + txt + '</th>'; }
+
+  var texto = [], filas = [];
+  lista.forEach(function(c) {
+    var ref = c.nunca ? 'sin cobros (1° despacho ' + _fAlerta_(c.desde, 'dd/MM/yyyy') + ')'
+                      : 'último cobro ' + _fAlerta_(c.desde, 'dd/MM/yyyy');
+    texto.push('• ' + c.cliente + ' — debe ' + _pesosAlerta_(c.saldo) + ' — ' + c.dias + ' días (' + ref + ')' +
+               (c.diasCred ? ' · crédito pactado ' + c.diasCred + ' d' : ''));
+    filas.push('<tr>' + td(esc(c.cliente)) + td(_pesosAlerta_(c.saldo), true) + td('<b>' + c.dias + '</b>', true) +
+               td(esc(ref)) + td(c.diasCred ? c.diasCred + ' d' : '—', true) + '</tr>');
+  });
+  var html = '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
+    '<p>Clientes con saldo pendiente y <b>' + ALERTA_DIAS + ' días o más</b> sin registrar un cobro. ' +
+    'Total a cobrar: <b>' + _pesosAlerta_(total) + '</b>.</p>' +
+    '<table style="border-collapse:collapse;font-size:13px"><tr style="background:#2F5496;color:#fff">' +
+    th('Cliente') + th('Saldo', true) + th('Días', true) + th('Referencia') + th('Crédito', true) + '</tr>' +
+    filas.join('') + '</table>' + (pie ? '<p style="color:#666;font-size:12px">' + esc(pie) + '</p>' : '') + '</div>';
+
+  MailApp.sendEmail({
+    to: ALERTA_DESTINATARIOS,
+    subject: asunto,
+    body: 'Clientes con saldo pendiente y ' + ALERTA_DIAS + '+ días sin cobrar (total ' + _pesosAlerta_(total) + '):\n\n' +
+          texto.join('\n') + (pie ? '\n\n' + pie : ''),
+    htmlBody: html,
+    name: 'Añañai · Cobranzas'
+  });
+}
+
+// Lo ejecuta el trigger diario. Solo manda mail si hay clientes "nuevos" para avisar.
+function revisarCobranzas() {
+  var props = PropertiesService.getScriptProperties();
+  var hoyStr = _fAlerta_(new Date());
+  var todos = getCobranzasPasadas(ALERTA_DIAS);
+  var nuevos = todos.filter(function(c) {
+    var raw = props.getProperty(ALERTA_PREFIJO + c.clave);
+    if (!raw) return true;
+    var st; try { st = JSON.parse(raw); } catch (e) { return true; }
+    if (st.ref !== _fAlerta_(c.desde)) return true;  // hubo un cobro nuevo desde el último aviso: ciclo nuevo
+    return ALERTA_REPETIR_CADA > 0 && _diasEntreAlerta_(st.aviso, hoyStr) >= ALERTA_REPETIR_CADA;
+  });
+  Logger.log('Cobranzas pasadas: ' + todos.length + ' · a avisar hoy: ' + nuevos.length);
+  if (!nuevos.length) return;
+  _enviarMailCobranzas_(nuevos, todos.length - nuevos.length, false);
+  nuevos.forEach(function(c) {
+    props.setProperty(ALERTA_PREFIJO + c.clave, JSON.stringify({ ref: _fAlerta_(c.desde), aviso: hoyStr }));
+  });
+}
+
+// Manda YA un mail con todos los clientes pasados, sin guardar nada
+// (no afecta a qué avisa el trigger después). Para probar y ver cómo queda.
+function probarCobranzas() {
+  var lista = getCobranzasPasadas(ALERTA_DIAS);
+  lista.forEach(function(c) {
+    Logger.log(c.cliente + ' · ' + _pesosAlerta_(c.saldo) + ' · ' + c.dias + ' días' + (c.nunca ? ' (nunca cobró)' : ''));
+  });
+  if (!lista.length) { Logger.log('Ningún cliente cumple la condición hoy.'); return; }
+  _enviarMailCobranzas_(lista, 0, true);
+}
+
+// Crea el trigger diario (borra uno anterior si ya existía). Ejecutar UNA vez.
+function instalarTriggerCobranzas() {
+  ScriptApp.getProjectTriggers().forEach(function(t) {
+    if (t.getHandlerFunction() === 'revisarCobranzas') ScriptApp.deleteTrigger(t);
+  });
+  ScriptApp.newTrigger('revisarCobranzas').timeBased().everyDays(1).atHour(ALERTA_HORA).create();
+  Logger.log('Trigger instalado: revisarCobranzas todos los días ~' + ALERTA_HORA + ':00.');
+}
+
+// Borra la memoria de "ya avisé": la próxima corrida vuelve a avisar de todos los pasados.
+function reiniciarAvisosCobranzas() {
+  var props = PropertiesService.getScriptProperties();
+  Object.keys(props.getProperties()).forEach(function(k) {
+    if (k.indexOf(ALERTA_PREFIJO) === 0) props.deleteProperty(k);
+  });
+  Logger.log('Avisos reiniciados.');
+}
+// ═══ FIN · ALERTA DIARIA DE COBRANZAS ══════════════════════════════
+
 // Generar ID secuencial
 function genId(prefijo, hoja_nombre) {
   var ss   = SpreadsheetApp.getActiveSpreadsheet();

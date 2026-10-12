@@ -29,6 +29,7 @@ body{max-width:560px;margin:0 auto;background:#f5f7fa}
 .b-rechazado,.b-cancelado{background:#fde8e8;color:#b82020}
 .b-revertido{background:#f0e6fa;color:#6b21a8}
 .linea{display:flex;justify-content:space-between;font-size:12.5px;padding:4px 0;border-bottom:1px dashed #eee;gap:8px}
+.editLineaBtn{background:none;border:none;color:#2F5496;font-size:13px;cursor:pointer;padding:2px 4px;line-height:1}
 .accBtns{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
 .accBtns button{flex:1;min-width:86px;padding:9px 6px;border:none;border-radius:6px;font-size:11.5px;font-weight:700;color:#fff}
 .roleBtns{display:grid;gap:10px;margin-top:6px}
@@ -558,6 +559,7 @@ function cargarPedidos(){
     .withFailureHandler(function(e){ document.getElementById('pedidosWrap').innerHTML='Error: '+e.message; })
     .listarPedidos(TOKEN);
 }
+var PEDIDOS_LINEAS_POR_ID={};
 function renderPedidos(pedidos){
   var grupos={};
   pedidos.forEach(function(p){ if(!grupos[p.grupo]) grupos[p.grupo]=[]; grupos[p.grupo].push(p); });
@@ -566,6 +568,7 @@ function renderPedidos(pedidos){
   if(!claves.length){ w.innerHTML='<div class="empty2">No hay pedidos para mostrar.</div>'; return; }
 
   var puedeGestionar = (ROL==='gerente'||ROL==='cfo');
+  PEDIDOS_LINEAS_POR_ID={};
   var h='';
   claves.forEach(function(g){
     var lineas=grupos[g];
@@ -579,9 +582,15 @@ function renderPedidos(pedidos){
       +'<div><b>'+p0.cliente+'</b><div style="font-size:11px;color:#888">'+p0.fecha+' · '+(p0.vendedor||'—')
       +(p0.fechaEstimada?' · despacho '+p0.fechaEstimada:'')+condTxt+'</div></div>'
       +'<span class="badge '+claseEstado+'">'+estado+'</span></div>';
+    var puedeEditarLineas = puedeGestionar && estado==='Terminado';
     lineas.forEach(function(l){
+      if(puedeEditarLineas){
+        PEDIDOS_LINEAS_POR_ID[l.id]={producto:l.producto,variante:l.variante,unidad:l.unidad,unidades:Number(l.unidades)||0};
+      }
       h+='<div class="linea"><span>'+l.producto+(l.variante?' ('+l.variante+')':'')+' × '+l.unidades+'</span>'
-        +'<span>$'+Math.round(l.monto).toLocaleString('es-AR')+'</span></div>';
+        +'<span style="display:flex;align-items:center;gap:6px">$'+Math.round(l.monto).toLocaleString('es-AR')
+        +(puedeEditarLineas?' <button type="button" class="editLineaBtn" onclick="editarLineaPedido(\''+l.id+'\')" title="Corregir cantidad">✏️</button>':'')
+        +'</span></div>';
     });
     h+='<div class="linea" style="border-bottom:none;font-weight:700"><span>Total</span><span>$'+Math.round(monto).toLocaleString('es-AR')+'</span></div>';
     if(p0.motivo) h+='<div style="font-size:11px;color:#b82020;margin-top:4px">Motivo: '+p0.motivo+'</div>';
@@ -610,6 +619,30 @@ function renderPedidos(pedidos){
     h+='</div>';
   });
   w.innerHTML=h;
+}
+// Corrige la cantidad de una línea puntual (PED-ID) mientras está
+// Terminado — antes de marcar Entregado. Usa editarPedido() de Pedidos.gs,
+// que ya existía pero no tenía ningún botón conectado en esta pantalla.
+function editarLineaPedido(pedId){
+  var info=PEDIDOS_LINEAS_POR_ID[pedId];
+  if(!info) return;
+  var etiqueta=info.producto+(info.variante?' ('+info.variante+')':'');
+  var nuevoStr=prompt('Corregir cantidad de "'+etiqueta+'"\nCantidad pedida: '+info.unidades+' '+(info.unidad||'')
+    +'\n\nIngresá la cantidad correcta a entregar:', info.unidades);
+  if(nuevoStr===null) return;
+  var nuevo=Number(String(nuevoStr).trim().replace(',','.'));
+  if(!nuevo || nuevo<=0){ alert('Ingresá una cantidad válida, mayor a 0.'); return; }
+  if(nuevo===info.unidades){ return; } // sin cambios, no hace falta llamar al servidor
+
+  var motivo=prompt('¿Por qué se corrige la cantidad? (queda en el log del pedido)');
+  if(motivo===null) return;
+  if(!motivo.trim()){ alert('El motivo es obligatorio.'); return; }
+
+  sp(true);
+  google.script.run
+    .withSuccessHandler(function(r){ sp(false); showMsg('msgPedidos',r.mensaje,r.ok); if(r.ok) cargarPedidos(); })
+    .withFailureHandler(function(e){ sp(false); showMsg('msgPedidos','Error: '+e.message,false); })
+    .editarPedido(pedId, {unidades:nuevo}, motivo.trim(), TOKEN);
 }
 function accion(tipo,grupo){
   var fnMap={aceptar:'aceptarPedido',terminar:'marcarTerminado'};
@@ -664,18 +697,31 @@ function meElegirFormaPago(val){
   meFormaPago=val;
   document.querySelectorAll('.meFpChip').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-val')===val); });
 }
-function confirmarEntrega(){
+// motivoForzado solo viene seteado en el reintento (ver más abajo, tras
+// confirmar el aviso de "sin stock suficiente").
+function confirmarEntrega(motivoForzado){
   if(!meCondicion){ showMsg('msgModalEntrega','Elegí cómo paga el cliente.',false); return; }
   if(meCondicion==='Contado' && !meFormaPago){ showMsg('msgModalEntrega','Elegí la forma de pago.',false); return; }
   sp(true);
   google.script.run
     .withSuccessHandler(function(r){
       sp(false);
-      if(r.ok){ cerrarModalEntrega(); showMsg('msgPedidos', r.mensaje, true); cargarPedidos(); }
-      else { showMsg('msgModalEntrega', r.mensaje, false); }
+      if(r.ok){ cerrarModalEntrega(); showMsg('msgPedidos', r.mensaje, true); cargarPedidos(); return; }
+      if(r.necesitaConfirmacion){
+        var detalle=(r.resultados||[]).filter(function(x){return x.necesitaConfirmacion;})
+          .map(function(x){return '• '+x.mensaje;}).join('\n');
+        var motivo=prompt('⚠ Sin stock suficiente para:\n\n'+detalle
+          +'\n\nSi confirmás, esas líneas se entregan igual y el stock puede quedar en negativo '
+          +'— queda anotado en "Alertas Stock" para revisar después.\n\nEscribí el motivo para confirmar igual:');
+        if(motivo===null){ showMsg('msgModalEntrega', r.mensaje, false); return; }
+        if(!motivo.trim()){ showMsg('msgModalEntrega','El motivo es obligatorio para confirmar igual.',false); return; }
+        confirmarEntrega(motivo.trim());
+        return;
+      }
+      showMsg('msgModalEntrega', r.mensaje, false);
     })
     .withFailureHandler(function(e){ sp(false); showMsg('msgModalEntrega','Error: '+e.message,false); })
-    .marcarEntregado(meGrupo, meCondicion, meFormaPago||'', v('meReferencia'), TOKEN);
+    .marcarEntregado(meGrupo, meCondicion, meFormaPago||'', v('meReferencia'), motivoForzado||'', TOKEN);
 }
 
 // ── REVERTIR UN PEDIDO ENTREGADO (solo CFO) ──────────────────────

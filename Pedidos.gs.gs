@@ -352,6 +352,23 @@ function _cambiarEstadoGrupo_(grupo, token, estadosOrigenValidos, estadoDestino,
 // DES-IDs cubiertos apuntando exactamente a los despachos de ESTE
 // pedido — así no depende de que alguien lo cargue a mano después.
 //
+// SIN STOCK SUFICIENTE: mismo mecanismo que el sidebar manual de
+// Despacho. Cada línea se manda primero sin forzar; si guardarDespacho()
+// devuelve necesitaConfirmacion=true, esa línea NO se despacha ni
+// cambia de estado (queda en Terminado) y se junta en el resultado para
+// que el formulario le pida al gerente un motivo. Si viene motivoForzado
+// (no vacío), esta llamada reintenta CADA línea pendiente con
+// forzarSinStock=true — las que sí tenían stock no se ven afectadas por
+// el forzado, así que es seguro reenviar el grupo entero. Queda
+// trazado en "Alertas Stock" igual que un despacho manual forzado.
+//
+// REINTENTOS: como esta función puede dispacharse en más de una llamada
+// (una normal + una forzada), NO exige que todas las líneas del grupo
+// estén en Terminado — solo bloquea si hay líneas en un estado inválido
+// (ni Terminado ni ya Entregado). Las que ya están Entregadas (de una
+// llamada anterior parcial) se ignoran sin error, y solo se procesan las
+// que siguen en Terminado.
+//
 // OJO — esto es exclusivo del flujo Pedidos: guardarDespacho() y
 // guardarCobro() en Código.gs NO se tocaron, así que el sidebar manual
 // de Despacho sigue funcionando exactamente igual que antes, sin
@@ -360,7 +377,7 @@ function _cambiarEstadoGrupo_(grupo, token, estadosOrigenValidos, estadoDestino,
 // el mismo bug que motiva repararCxCContado() en Código.gs) se
 // resuelve acá aparte, con _marcarDespachosComoCobrados_, sin tocar
 // esa función compartida.
-function marcarEntregado(grupo, condicionConfirmada, formaPago, referenciaPago, token) {
+function marcarEntregado(grupo, condicionConfirmada, formaPago, referenciaPago, motivoForzado, token) {
   var chk = _requiereRol_(token, ['gerente']);
   if (!chk.ok) return chk;
 
@@ -368,6 +385,8 @@ function marcarEntregado(grupo, condicionConfirmada, formaPago, referenciaPago, 
   if (condicionConfirmada === 'Contado' && (!formaPago || !String(formaPago).trim())) {
     return { ok: false, mensaje: 'Falta indicar la forma de pago para confirmar la entrega como Contado.' };
   }
+  var forzar = !!(motivoForzado && String(motivoForzado).trim());
+  motivoForzado = forzar ? String(motivoForzado).trim() : '';
 
   return _conLock_(function() {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -375,23 +394,30 @@ function marcarEntregado(grupo, condicionConfirmada, formaPago, referenciaPago, 
     var lineas = _leerTodosPedidos_().filter(function(p) { return p.grupo === grupo; });
     if (!lineas.length) return { ok: false, mensaje: 'Grupo de pedido no encontrado.' };
 
-    var noTerminadas = lineas.filter(function(p) { return p.estado !== PED_ESTADOS.TERMINADO; });
-    if (noTerminadas.length) {
+    var invalidas = lineas.filter(function(p) {
+      return p.estado !== PED_ESTADOS.TERMINADO && p.estado !== PED_ESTADOS.ENTREGADO;
+    });
+    if (invalidas.length) {
       return { ok: false, mensaje: '⛔ Todas las líneas tienen que estar en "Terminado" antes de entregar. Faltan: '
-        + noTerminadas.map(function(p){return p.id;}).join(', ') };
+        + invalidas.map(function(p){return p.id+' está en '+p.estado;}).join(', ') };
     }
+    var pendientes = lineas.filter(function(p) { return p.estado === PED_ESTADOS.TERMINADO; });
+    if (!pendientes.length) return { ok: false, mensaje: 'Este pedido ya fue entregado por completo.' };
 
     var resultados = [];
     var montoContado = 0;
     var desIdsContado = [];
-    lineas.forEach(function(p) {
+    pendientes.forEach(function(p) {
       var r = guardarDespacho({ // definida en Código.gs — misma lógica que el despacho manual
         cliId: p.cliId, clienteNombre: p.cliente, producto: p.producto, variante: p.variante,
         unidad: p.unidad, unidades: p.unidades, precio: p.precio, precioTipo: p.precioTipo,
         condicion: condicionConfirmada, obs: (p.obs || '') + ' · origen ' + p.id,
-        forzarSinStock: false, motivoForzado: ''
+        forzarSinStock: forzar, motivoForzado: motivoForzado
       });
-      resultados.push({ pedId: p.id, ok: r.ok, desId: r.desId, monto: r.monto, mensaje: r.mensaje });
+      resultados.push({
+        pedId: p.id, ok: r.ok, desId: r.desId, monto: r.monto, mensaje: r.mensaje,
+        necesitaConfirmacion: !!r.necesitaConfirmacion, stockActual: r.stockActual
+      });
       if (r.ok) {
         hoja.getRange(p.fila, PC.ESTADO).setValue(PED_ESTADOS.ENTREGADO);
         hoja.getRange(p.fila, PC.DES_ID).setValue(r.desId);
@@ -406,18 +432,24 @@ function marcarEntregado(grupo, condicionConfirmada, formaPago, referenciaPago, 
 
     var fallidas = resultados.filter(function(x) { return !x.ok; });
     if (fallidas.length) {
+      var sinStock = fallidas.filter(function(x) { return x.necesitaConfirmacion; });
+      var otrosFallos = fallidas.filter(function(x) { return !x.necesitaConfirmacion; });
+      // Todas las fallas son por falta de stock (ninguna es un error real,
+      // como un SKU roto) → el formulario puede ofrecer forzar con motivo.
+      var puedeForzar = sinStock.length > 0 && otrosFallos.length === 0;
       return {
-        ok: false, parcial: true, resultados: resultados,
+        ok: false, parcial: true, resultados: resultados, necesitaConfirmacion: puedeForzar,
         mensaje: '⚠ ' + (resultados.length - fallidas.length) + ' de ' + resultados.length
-          + ' línea(s) se despacharon. Revisá manualmente: '
+          + ' línea(s) se despacharon. ' + (puedeForzar ? 'Sin stock suficiente: ' : 'Revisá manualmente: ')
           + fallidas.map(function(x){return x.pedId+' — '+x.mensaje;}).join(' · ')
       };
     }
 
-    var mensaje = '✅ Pedido entregado — se generaron ' + resultados.length + ' despacho(s).';
+    var mensaje = (forzar ? '⚠ Pedido entregado IMPUTANDO sin stock suficiente' : '✅ Pedido entregado')
+      + ' — se generaron ' + resultados.length + ' despacho(s).';
 
     if (condicionConfirmada === 'Contado' && desIdsContado.length) {
-      var p0 = lineas[0];
+      var p0 = pendientes[0];
       var cobroRes = guardarCobro({ // definida en Código.gs — misma función que el sidebar de Cobros
         cliId: p0.cliId, clienteNombre: p0.cliente,
         monto: montoContado, descuento: 0,
